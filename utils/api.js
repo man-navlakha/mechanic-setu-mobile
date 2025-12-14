@@ -38,22 +38,42 @@ api.interceptors.response.use(
             try {
                 console.log("Session expired. Attempting refresh...");
 
-                // --- REFRESH LOGIC ---
-                // Call your backend to refresh the token. 
-                // If your backend refreshes automatically on a specific endpoint, call it here.
-                // Example: const res = await axios.post(`${BASE_URL}users/refresh/`, {}, { headers: { Cookie: await SecureStore.getItemAsync('session_cookie') } });
+                // Call the backend to refresh the session
+                // We use plain 'axios' to avoid triggering this interceptor again
+                const cookie = await SecureStore.getItemAsync('session_cookie');
 
-                // If your backend sends a NEW cookie, save it:
-                // if (res.headers['set-cookie']) {
-                //   await SecureStore.setItemAsync('session_cookie', res.headers['set-cookie'][0]);
-                // }
+                // Assuming the endpoint is /users/refresh/ based on previous comments
+                // If this path is wrong, please check your backend API documentation
+                const res = await axios.post(`${BASE_URL}users/refresh/`, {}, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cookie': cookie
+                    },
+                    withCredentials: true
+                });
+
+                console.log("Refresh successful:", res.status);
+
+                // If the backend sends a NEW cookie, save it
+                const newCookie = res.headers['set-cookie'];
+                if (newCookie) {
+                    // Handle array or string
+                    const cookieValue = Array.isArray(newCookie) ? newCookie.join('; ') : newCookie;
+                    await SecureStore.setItemAsync('session_cookie', cookieValue);
+
+                    // Update the header for the retry
+                    originalRequest.headers['Cookie'] = cookieValue;
+                    api.defaults.headers.common['Cookie'] = cookieValue;
+                }
 
                 // Retry the original failed request
                 return api(originalRequest);
+
             } catch (refreshError) {
-                console.error("Refresh failed", refreshError);
+                console.error("Refresh failed:", refreshError.response?.status, refreshError.response?.data);
                 // If refresh fails, delete cookie so AuthContext kicks user to Login
                 await SecureStore.deleteItemAsync('session_cookie');
+                return Promise.reject(refreshError);
             }
         }
         return Promise.reject(error);

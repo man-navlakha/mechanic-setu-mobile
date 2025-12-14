@@ -1,16 +1,32 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowRight, Mail } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { user } = useAuth() as any;
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      router.replace('/dashboard');
+    }
+  }, [user]);
+
+  if (user) {
+    return (
+      <View className="flex-1 justify-center items-center bg-slate-100">
+        <ActivityIndicator size="large" color="#0f172a" />
+      </View>
+    );
+  }
 
   const handleEmailLogin = async () => {
     setError('');
@@ -78,10 +94,10 @@ export default function LoginScreen() {
 
               {/* Header / Logo Section */}
               <View className="items-center mb-8">
-                <View className="bg-blue-100 p-4 rounded-full mb-4">
+                <View className="bg-blue-100 p-1 rounded-full mb-4">
                   <Image
-                    source={require('../assets/images/react-logo.png')} // Replace with your ms.png
-                    className="w-16 h-16 rounded-full"
+                    source={require('../assets/logo.png')} // Replace with your ms.png
+                    className="w-[100px] h-[100px] p-4 "
                     resizeMode="contain"
                   />
                 </View>
@@ -113,11 +129,11 @@ export default function LoginScreen() {
                     Enter Your Email
                   </Text>
                   <View className="relative flex-row items-center">
-                    <View className="absolute left-4 z-10">
+                    <View className="absolute left-4 z-10 ">
                       <Mail size={20} color="#64748b" />
                     </View>
                     <TextInput
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl py-4 pl-12 pr-4 text-slate-800 text-base focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      className="w-full bg-slate-50 border  border-slate-300 rounded-xl py-4 pl-12 pr-4 text-slate-800 text-base focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                       placeholder="Enter your email address"
                       placeholderTextColor="#94a3b8"
                       value={email}
