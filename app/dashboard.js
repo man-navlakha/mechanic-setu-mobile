@@ -1,16 +1,16 @@
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { History, Menu, Navigation, Wrench } from 'lucide-react-native';
+import { DollarSign, History, Menu, Navigation, Wrench } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, StatusBar, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import JobNotificationPopup from '../components/JobNotificationPopup'; // Ensure this path is correct
+import JobNotificationPopup from '../components/JobNotificationPopup';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../context/WebSocketContext';
 import api from '../utils/api';
 
-// Minimal Map Style
+// Modern Dark/Light Map Style
 const mapStyle = [
     { "elementType": "geometry", "stylers": [{ "color": "#f5f5f5" }] },
     { "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
@@ -24,65 +24,51 @@ export default function Dashboard() {
     const router = useRouter();
     const mapRef = useRef(null);
     const { user, profile } = useAuth();
-
-    // Use WebSocket Context
     const { isOnline, setIsOnline, job, acceptJob, rejectJob, mechanicCoords } = useWebSocket();
 
-    // Local State
+    // State
     const [location, setLocation] = useState(null);
     const [nearbyJobs, setNearbyJobs] = useState([]);
     const [pastJobs, setPastJobs] = useState([]);
     const [earnings, setEarnings] = useState({ total: 0, count: 0 });
     const [loading, setLoading] = useState(true);
 
-    // 1. INITIALIZE MAP (Independent of WebSocket)
+    // 1. INITIALIZE MAP
     useEffect(() => {
         (async () => {
             let { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Location is required to work.');
                 setLoading(false);
                 return;
             }
-
-            // Get initial position immediately
             let loc = await Location.getCurrentPositionAsync({});
-
-            const region = {
+            setLocation({
                 latitude: loc.coords.latitude,
                 longitude: loc.coords.longitude,
                 latitudeDelta: 0.015,
                 longitudeDelta: 0.015,
-            };
-
-            setLocation(region);
-            setLoading(false); // Stop loading immediately
+            });
+            setLoading(false);
         })();
     }, []);
 
-    // 2. LISTEN TO LIVE UPDATES (From WebSocket)
+    // 2. LIVE UPDATES
     useEffect(() => {
-        if (mechanicCoords && mapRef.current) {
-            // Optional: Animate map to follow mechanic?
-            // mapRef.current.animateToRegion({
-            //   ...mechanicCoords,
-            //   latitudeDelta: 0.015,
-            //   longitudeDelta: 0.015
-            // }, 1000);
+        if (mechanicCoords && mapRef.current && isOnline) {
+            // Optional: Smoothly animate map to follow user
+            // mapRef.current.animateCamera({ center: mechanicCoords, pitch: 0, heading: 0 }, { duration: 1000 });
         }
-    }, [mechanicCoords]);
+    }, [mechanicCoords, isOnline]);
 
-    // 3. FETCH DATA (Earnings/History)
+    // 3. FETCH DATA
     useEffect(() => {
         fetchJobHistory();
-        if (isOnline && location) {
-            fetchNearbyJobs();
-        }
+        if (isOnline && location) fetchNearbyJobs();
     }, [isOnline, location]);
 
     const fetchNearbyJobs = async () => {
-        // Mock Jobs for UI demo (Replace with API)
         if (!location) return;
+        // Mock Data for UI (Replace with API)
         setNearbyJobs([
             { id: 1, lat: location.latitude + 0.002, lng: location.longitude + 0.002, type: "Flat Tire", price: 500 },
             { id: 2, lat: location.latitude - 0.003, lng: location.longitude - 0.001, type: "Battery Dead", price: 700 },
@@ -93,70 +79,54 @@ export default function Dashboard() {
         try {
             const res = await api.get('/Profile/MechanicHistory/');
             const history = res.data.job_history || [];
-
             const totalEarned = history.reduce((sum, j) => sum + (parseFloat(j.price) || 0), 0);
             setEarnings({ total: totalEarned, count: history.length });
-
-            const validPastJobs = history.filter(j => j.latitude && j.longitude && j.status === 'COMPLETED');
-            setPastJobs(validPastJobs);
-        } catch (err) {
-            console.log("History error:", err.message);
-        }
+            const validPast = history.filter(j => j.latitude && j.longitude && j.status === 'COMPLETED');
+            setPastJobs(validPast);
+        } catch (e) { console.log(e); }
     };
 
     const recenterMap = async () => {
         let loc = await Location.getCurrentPositionAsync({});
-        if (mapRef.current) {
-            mapRef.current.animateToRegion({
-                latitude: loc.coords.latitude,
-                longitude: loc.coords.longitude,
-                latitudeDelta: 0.015,
-                longitudeDelta: 0.015,
-            }, 1000);
-        }
+        mapRef.current?.animateToRegion({
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+            latitudeDelta: 0.015,
+            longitudeDelta: 0.015,
+        }, 1000);
     };
 
-    // --- RENDER ---
     if (loading) {
         return (
             <View className="flex-1 justify-center items-center bg-white">
                 <ActivityIndicator size="large" color="#2563eb" />
-                <Text className="mt-4 text-slate-500 font-medium">Starting Engine...</Text>
             </View>
         );
     }
 
     return (
-        <View className="flex-1">
+        <View className="flex-1 bg-white">
+            <StatusBar barStyle="dark-content" />
 
-            {/* 1. MAP LAYER */}
+            {/* --- MAP --- */}
             <MapView
                 ref={mapRef}
                 provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-                className="flex-1 w-full h-full"
+                style={StyleSheet.absoluteFillObject}
                 initialRegion={location}
                 showsUserLocation={true}
                 showsMyLocationButton={false}
                 customMapStyle={mapStyle}
             >
                 {isOnline && nearbyJobs.map(j => (
-                    <Marker
-                        key={j.id}
-                        coordinate={{ latitude: j.lat, longitude: j.lng }}
-                        title={j.type}
-                    >
-                        <View className="bg-blue-600 p-2 rounded-full border-2 border-white shadow-lg">
+                    <Marker key={j.id} coordinate={{ latitude: j.lat, longitude: j.lng }} title={j.type}>
+                        <View className="bg-blue-600 p-2 rounded-full border-2 border-white shadow-md">
                             <Wrench size={16} color="white" />
                         </View>
                     </Marker>
                 ))}
-
                 {pastJobs.map(j => (
-                    <Marker
-                        key={`past-${j.id}`}
-                        coordinate={{ latitude: parseFloat(j.latitude), longitude: parseFloat(j.longitude) }}
-                        opacity={0.6}
-                    >
+                    <Marker key={`past-${j.id}`} coordinate={{ latitude: parseFloat(j.latitude), longitude: parseFloat(j.longitude) }} opacity={0.6}>
                         <View className="bg-slate-200 p-1.5 rounded-full border border-slate-400">
                             <History size={14} color="#64748b" />
                         </View>
@@ -164,90 +134,103 @@ export default function Dashboard() {
                 ))}
             </MapView>
 
-            {/* 2. TOP NAVBAR */}
-            <SafeAreaView className="absolute top-0 w-full pointer-events-none">
-                <View className="mx-4 mt-2 flex-row justify-between items-center bg-white/95 p-4 rounded-2xl shadow-md border border-slate-100 pointer-events-auto">
-                    <View>
-                        <Text className="text-xs text-slate-500 uppercase font-bold tracking-wider">
-                            {isOnline ? "● ONLINE" : "○ OFFLINE"}
-                        </Text>
-                        <Text className="text-lg font-bold text-slate-800">
-                            {profile?.shop_name || "Mechanic"}
-                        </Text>
-                    </View>
-
+            {/* --- TOP BAR --- */}
+            <SafeAreaView className="absolute top-0 w-full" pointerEvents="box-none">
+                <View className="mx-4 flex-row justify-between items-start pt-2">
+                    {/* Profile Pill */}
                     <TouchableOpacity
-                        className="bg-slate-50 p-3 rounded-full border border-slate-100"
                         onPress={() => router.push('/profile')}
+                        className="flex-row items-center bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-sm border border-slate-100"
                     >
-                        <Menu size={24} color="#334155" />
+                        <View className={`w-2.5 h-2.5 rounded-full mr-2 ${isOnline ? 'bg-green-500' : 'bg-slate-400'}`} />
+                        <Text className="font-bold text-slate-800 text-sm">{profile?.first_name || "Mechanic"}</Text>
+                    </TouchableOpacity>
+
+                    {/* Menu Button */}
+                    <TouchableOpacity
+                        onPress={() => router.push('/profile')}
+                        className="bg-white/90 p-2.5 rounded-full shadow-sm border border-slate-100"
+                    >
+                        <Menu size={22} color="#1e293b" />
                     </TouchableOpacity>
                 </View>
 
-                {/* ACTIVE JOB BANNER (If working) */}
+                {/* Active Job Floating Banner */}
                 {job && job.status === "WORKING" && (
-                    <View className="mx-4 mt-3 bg-blue-600 p-4 rounded-xl shadow-lg flex-row justify-between items-center pointer-events-auto">
+                    <View className="mx-4 mt-4 bg-slate-900 rounded-2xl p-4 shadow-xl flex-row justify-between items-center">
                         <View>
                             <Text className="text-white font-bold text-base">Active Job #{job.id}</Text>
-                            <Text className="text-blue-100 text-sm">{job.problem}</Text>
+                            <Text className="text-slate-300 text-xs mt-0.5">{job.vehical_type} • {job.problem}</Text>
                         </View>
                         <TouchableOpacity
                             onPress={() => router.push(`/job/${job.id}`)}
-                            className="bg-white px-4 py-2 rounded-lg"
+                            className="bg-blue-600 px-4 py-2 rounded-xl"
                         >
-                            <Text className="text-blue-600 font-bold text-sm">View</Text>
+                            <Text className="text-white font-bold text-xs">View</Text>
                         </TouchableOpacity>
                     </View>
                 )}
             </SafeAreaView>
 
-            {/* 3. BOTTOM PANEL */}
-            <View className="absolute bottom-0 w-full bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-6 pb-8">
+            {/* --- BOTTOM SHEET --- */}
+            <View className="absolute bottom-0 w-full bg-white rounded-t-[32px] shadow-[0_-5px_30px_rgba(0,0,0,0.08)] p-6 pb-10">
 
-                {/* Recenter Button */}
+                {/* Recenter Button (Floating) */}
                 <TouchableOpacity
                     onPress={recenterMap}
-                    className="absolute -top-6 right-6 bg-white p-4 rounded-full shadow-lg border border-slate-100"
+                    className="absolute -top-6 right-6 bg-white p-3.5 rounded-2xl shadow-lg border border-slate-50"
                 >
-                    <Navigation size={24} color="#2563eb" fill="#2563eb" />
+                    <Navigation size={22} color="#2563eb" fill="#2563eb" />
                 </TouchableOpacity>
 
-                {/* Status Switch */}
-                <View className="flex-row items-center justify-between mb-6">
+                {/* Status Toggle Row */}
+                <View className="flex-row justify-between items-center mb-6">
                     <View>
-                        <Text className="text-lg font-bold text-slate-800">
-                            {isOnline ? "You are Online" : "You are Offline"}
+                        <Text className="text-xl font-bold text-slate-900">
+                            {isOnline ? "You're Online" : "You're Offline"}
                         </Text>
-                        <Text className="text-slate-500 text-xs">
-                            {isOnline ? "Receiving job requests..." : "Go online to start earning"}
+                        <Text className="text-slate-500 text-xs mt-0.5">
+                            {isOnline ? "Looking for nearby jobs..." : "Go online to start earning"}
                         </Text>
                     </View>
 
-                    <Switch
-                        trackColor={{ false: "#e2e8f0", true: "#dbeafe" }}
-                        thumbColor={isOnline ? "#2563eb" : "#94a3b8"}
-                        ios_backgroundColor="#e2e8f0"
-                        onValueChange={setIsOnline}
-                        value={isOnline}
-                        style={{ transform: [{ scaleX: 1.2 }, { scaleY: 1.2 }] }}
-                    />
+                    <View className="flex-row items-center bg-slate-50 rounded-full p-1 border border-slate-100">
+                        <Text className={`text-xs font-bold px-3 ${isOnline ? 'text-green-600' : 'text-slate-400'}`}>
+                            {isOnline ? 'ON' : 'OFF'}
+                        </Text>
+                        <Switch
+                            trackColor={{ false: "#cbd5e1", true: "#2563eb" }}
+                            thumbColor={"#ffffff"}
+                            ios_backgroundColor="#cbd5e1"
+                            onValueChange={setIsOnline}
+                            value={isOnline}
+                            style={{ transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }] }}
+                        />
+                    </View>
                 </View>
 
-                {/* Earnings */}
-                <View className="flex-row bg-slate-50 p-4 rounded-2xl border border-slate-100 divide-x divide-slate-200">
-                    <View className="flex-1 items-center">
-                        <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Total Earnings</Text>
-                        <Text className="text-xl font-black text-slate-800">₹{earnings.total}</Text>
+                {/* Earnings Card */}
+                <View className="bg-slate-50 rounded-2xl p-5 border border-slate-100 flex-row divide-x divide-slate-200">
+                    <View className="flex-1 items-center pr-4">
+                        <View className="flex-row items-center mb-1">
+                            <DollarSign size={14} color="#64748b" />
+                            <Text className="text-slate-500 text-xs font-bold uppercase ml-1">Earnings</Text>
+                        </View>
+                        <Text className="text-2xl font-black text-slate-900">₹{earnings.total}</Text>
                     </View>
-                    <View className="flex-1 items-center">
-                        <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Jobs Completed</Text>
-                        <Text className="text-xl font-black text-slate-800">{earnings.count}</Text>
+
+                    <View className="flex-1 items-center pl-4">
+                        <View className="flex-row items-center mb-1">
+                            <History size={14} color="#64748b" />
+                            <Text className="text-slate-500 text-xs font-bold uppercase ml-1">Jobs Done</Text>
+                        </View>
+                        <Text className="text-2xl font-black text-slate-900">{earnings.count}</Text>
                     </View>
                 </View>
+
             </View>
 
-            {/* 4. NEW JOB POPUP (Overlay) */}
-            {/* Shows only if job exists and status is PENDING (Not accepted yet) */}
+            {/* --- POPUP (Overlay) --- */}
             {job && job.status === "PENDING" && (
                 <JobNotificationPopup
                     job={job}
@@ -255,7 +238,6 @@ export default function Dashboard() {
                     onReject={rejectJob}
                 />
             )}
-
         </View>
     );
 }

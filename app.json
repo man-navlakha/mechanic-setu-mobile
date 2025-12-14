@@ -25,7 +25,12 @@
         "USE_FULL_SCREEN_INTENT",
         "FOREGROUND_SERVICE",
         "VIBRATE"
-      ]
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyB41DRUbKW4nM5UPKsNHEMhhPcSilNv3I"
+        }
+      }
     },
     "web": {
       "output": "static",
