@@ -4,45 +4,56 @@ import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import "../global.css";
 
+
+// Define a minimal type for the AuthContext since it's in JS
+interface AuthContextType {
+  user: any;
+  profile: any;
+  loading: boolean;
+  login: (userData: any, cookieString?: string) => Promise<void>;
+  logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
+}
+
 function RootLayoutNav() {
-  // 1. Get 'profile' from AuthContext along with 'user'
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading } = useAuth() as AuthContextType;
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
 
-    // Get the current screen name (e.g., 'index', 'dashboard', 'form')
-    const currentRoute = segments[0];
+    const currentRoute = segments[0] as string;
 
-    // --- CHECK 1: NOT LOGGED IN ---
+    // --- CASE 1: NOT LOGGED IN ---
     if (!user) {
-      // If user is NOT logged in, kick them to Login ('/') 
-      // UNLESS they are already on Login ('index') or Verify ('verify') page
       if (currentRoute !== 'index' && currentRoute !== 'verify') {
         router.replace('/');
       }
       return;
     }
 
-    // --- CHECK 2: LOGGED IN ---
+    // --- CASE 2: LOGGED IN ---
     if (user) {
-      // If profile data hasn't loaded yet, wait.
-      if (!profile) return;
+      // A. Profile is Null (New User OR Missing Mobile Number)
+      if (!profile) {
+        // Force them to the Form to complete profile
+        if (currentRoute !== 'form') {
+          router.replace('/form');
+        }
+        return;
+      }
 
+      // B. Profile Exists (Has Mobile Number) -> Check Verification
       if (profile.is_verified) {
-        // SCENARIO A: Verified Mechanic
-        // If they are on Login, Verify, or Unverified screens -> Auto-move to Dashboard
-        if (currentRoute === 'index' || currentRoute === 'verify' || currentRoute === 'unverified') {
+        // Verified -> Go to Dashboard (if on intro screens)
+        if (currentRoute === 'index' || currentRoute === 'verify' || currentRoute === 'unverified' || currentRoute === 'form') {
           router.replace('/dashboard');
         }
       } else {
-        // SCENARIO B: Unverified Mechanic
-        // Force them to 'unverified' screen
-        // BUT allow access to 'form' (so they can actually fill out the KYC!)
-        if (currentRoute !== 'unverified' && currentRoute !== 'form') {
-          router.replace('/unverified');
+        // Unverified -> Go to Unverified Screen
+        if (currentRoute !== 'unverified') {
+          router.replace('/unverified' as any);
         }
       }
     }
@@ -61,8 +72,6 @@ function RootLayoutNav() {
       <Stack.Screen name="index" />
       <Stack.Screen name="verify" />
       <Stack.Screen name="form" />
-
-      {/* 3. Register the new screens in the Stack */}
       <Stack.Screen name="unverified" />
       <Stack.Screen name="dashboard" />
     </Stack>

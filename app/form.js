@@ -5,11 +5,13 @@ import { ArrowLeft, ArrowRight, Camera, CheckCircle, MapPin } from 'lucide-react
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../context/AuthContext'; // Import Auth Context
 import api from '../utils/api';
 
 export default function MechanicForm() {
     const router = useRouter();
     const params = useLocalSearchParams();
+    const { refreshProfile } = useAuth(); // Get the refresh function
 
     // State
     const [currentStep, setCurrentStep] = useState(1);
@@ -25,30 +27,29 @@ export default function MechanicForm() {
         shop_address: '',
         shop_latitude: '',
         shop_longitude: '',
-        email: params.email || '', // Pre-fill if available
+        email: params.email || '',
         mobile_number: '',
-        profile_pic: null, // Stores the image URI
+        profile_pic: null,
     });
 
-    // Handle Text Change
     const handleChange = (name, value) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    // --- FEATURE 1: IMAGE PICKER ---
-    const pickImage = async () => {
-        // Request permission
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    // --- FIXED IMAGE PICKER (Camera Only) ---
+    const openCamera = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to make this work!');
+            Alert.alert('Permission Denied', 'We need camera access to take your photo.');
             return;
         }
 
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        // Fix: Use string array ['images'] to avoid SDK 52 crash
+        let result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
             allowsEditing: true,
             aspect: [1, 1],
-            quality: 0.5, // Compress image
+            quality: 0.5,
         });
 
         if (!result.canceled) {
@@ -56,7 +57,7 @@ export default function MechanicForm() {
         }
     };
 
-    // --- FEATURE 2: GEOLOCATION ---
+    // --- GEOLOCATION ---
     const getCurrentLocation = async () => {
         setLocationLoading(true);
         let { status } = await Location.requestForegroundPermissionsAsync();
@@ -74,7 +75,6 @@ export default function MechanicForm() {
                 shop_longitude: location.coords.longitude.toString()
             }));
 
-            // Reverse Geocode (Get Address from Coords)
             let address = await Location.reverseGeocodeAsync({
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude
@@ -92,25 +92,30 @@ export default function MechanicForm() {
         }
     };
 
-    // --- SUBMISSION ---
+    // --- SUBMISSION LOGIC ---
     const handleSubmit = async () => {
         setLoading(true);
 
         try {
-            // Create FormData object for file upload
             const data = new FormData();
 
             data.append('first_name', formData.first_name);
             data.append('last_name', formData.last_name);
             data.append('adhar_card', formData.adhar_card);
             data.append('email', formData.email);
-            data.append('mobile_number', formData.mobile_number);
+
+            // Format Phone Number
+            let phone = formData.mobile_number;
+            if (phone && !phone.startsWith('+')) {
+                phone = `+91${phone}`;
+            }
+            data.append('mobile_number', phone);
+
             data.append('shop_name', formData.shop_name);
             data.append('shop_address', formData.shop_address);
             data.append('shop_latitude', formData.shop_latitude);
             data.append('shop_longitude', formData.shop_longitude);
 
-            // Handle Image File
             if (formData.profile_pic) {
                 const uriParts = formData.profile_pic.split('.');
                 const fileType = uriParts[uriParts.length - 1];
@@ -122,28 +127,39 @@ export default function MechanicForm() {
                 });
             }
 
-            // Send to Backend (Note: Content-Type is automatic with FormData in React Native)
+            // 1. Send Data to Backend
             await api.post('/users/SetMechanicDetail/', data, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    // Cookie is handled automatically if you passed it via params in previous step, 
-                    // or if you are using a global interceptor. 
-                    // If using the params method, add: 'Cookie': params.cookie
-                }
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            Alert.alert("Success!", "Profile created successfully.");
-            router.replace('/'); // Go to Dashboard
+            // 2. Refresh the Profile in AuthContext
+            // This pulls the new data (is_verified status) from the server
+            await refreshProfile();
+
+            Alert.alert("Success", "Profile submitted successfully!");
+
+            // 3. Navigate to Unverified Page
+            // If the user IS verified, your _layout.tsx will automatically redirect them to Dashboard.
+            // If NOT verified, they will stay on the Unverified page (Pending state).
+            router.replace('/unverified');
 
         } catch (err) {
             console.error("Submission Error", err.response?.data);
-            Alert.alert("Error", "Failed to create profile. Please check your inputs.");
+
+            let errorMsg = "Failed to create profile.";
+            if (err.response?.data?.mobile_number) {
+                errorMsg = `Phone Error: ${err.response.data.mobile_number[0]}`;
+            } else if (err.response?.data) {
+                const keys = Object.keys(err.response.data);
+                if (keys.length > 0) errorMsg = `${keys[0]}: ${err.response.data[keys[0]]}`;
+            }
+
+            Alert.alert("Error", errorMsg);
         } finally {
             setLoading(false);
         }
     };
 
-    // Validation before moving next
     const validateStep = () => {
         if (currentStep === 1) {
             if (!formData.first_name || !formData.last_name || !formData.adhar_card) return false;
@@ -164,23 +180,26 @@ export default function MechanicForm() {
 
     const prevStep = () => setCurrentStep(c => c - 1);
 
-    // --- RENDER STEPS ---
     const renderStep = () => {
         switch (currentStep) {
             case 1: // Personal
                 return (
                     <View className="space-y-4">
                         <View className="items-center mb-4">
-                            <TouchableOpacity onPress={pickImage} className="h-28 w-28 bg-slate-100 rounded-full items-center justify-center border-2 border-dashed border-slate-300 overflow-hidden">
+                            <TouchableOpacity
+                                onPress={openCamera}
+                                className="h-28 w-28 bg-slate-100 rounded-full items-center justify-center border-2 border-dashed border-slate-300 overflow-hidden shadow-sm"
+                            >
                                 {formData.profile_pic ? (
                                     <Image source={{ uri: formData.profile_pic }} className="w-full h-full" />
                                 ) : (
                                     <View className="items-center">
-                                        <Camera size={24} color="#94a3b8" />
-                                        <Text className="text-xs text-slate-400 mt-1">Upload Photo</Text>
+                                        <Camera size={28} color="#64748b" />
+                                        <Text className="text-xs text-slate-500 mt-2 font-medium">Take Photo</Text>
                                     </View>
                                 )}
                             </TouchableOpacity>
+                            <Text className="text-slate-400 text-xs mt-2">Tap to capture photo</Text>
                         </View>
 
                         <View>
@@ -240,7 +259,20 @@ export default function MechanicForm() {
                         </View>
                         <View>
                             <Text className="text-slate-600 mb-1 font-medium">Mobile Number</Text>
-                            <TextInput value={formData.mobile_number} onChangeText={t => handleChange('mobile_number', t)} keyboardType="phone-pad" maxLength={10} className="bg-white border border-slate-300 p-3 rounded-xl" placeholder="9876543210" />
+                            <View className="flex-row items-center border border-slate-300 rounded-xl bg-white overflow-hidden">
+                                <View className="bg-slate-100 px-3 py-4 border-r border-slate-300">
+                                    <Text className="text-slate-600 font-bold">+91</Text>
+                                </View>
+                                <TextInput
+                                    value={formData.mobile_number}
+                                    onChangeText={t => handleChange('mobile_number', t)}
+                                    keyboardType="phone-pad"
+                                    maxLength={10}
+                                    className="flex-1 p-3 text-base"
+                                    placeholder="9876543210"
+                                />
+                            </View>
+                            <Text className="text-xs text-slate-400 mt-1">Enter 10 digit number without country code</Text>
                         </View>
                     </View>
                 );
@@ -260,7 +292,7 @@ export default function MechanicForm() {
                         </View>
                         <View className="flex-row justify-between">
                             <Text className="text-slate-500">Phone</Text>
-                            <Text className="font-semibold">{formData.mobile_number}</Text>
+                            <Text className="font-semibold">+91 {formData.mobile_number}</Text>
                         </View>
                         <View>
                             <Text className="text-slate-500 mb-1">Address</Text>
@@ -275,13 +307,9 @@ export default function MechanicForm() {
         <SafeAreaView className="flex-1 bg-slate-50">
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
                 <View className="p-6">
-
-                    {/* Header */}
                     <View className="mb-6">
                         <Text className="text-2xl font-bold text-slate-800">Complete Profile</Text>
                         <Text className="text-slate-500">Step {currentStep} of {totalSteps}</Text>
-
-                        {/* Progress Bar */}
                         <View className="h-2 bg-slate-200 rounded-full mt-3 overflow-hidden">
                             <View
                                 className="h-full bg-blue-600 rounded-full"
@@ -293,10 +321,8 @@ export default function MechanicForm() {
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
                         {renderStep()}
                     </ScrollView>
-
                 </View>
 
-                {/* Footer Navigation */}
                 <View className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-slate-200 flex-row justify-between items-center">
                     <TouchableOpacity
                         onPress={prevStep}
@@ -323,7 +349,6 @@ export default function MechanicForm() {
                         </TouchableOpacity>
                     )}
                 </View>
-
             </KeyboardAvoidingView>
         </SafeAreaView>
     );

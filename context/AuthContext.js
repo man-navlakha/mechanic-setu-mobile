@@ -10,7 +10,7 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
-    const [profile, setProfile] = useState(null); // Store Mechanic Profile (Verified status)
+    const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
                 if (userRes.data.username || userRes.data.id) {
                     setUser(userRes.data);
 
-                    // B. Fetch Profile for Verification Status
+                    // B. Fetch Profile (only if we have a user)
                     await fetchProfile();
                 } else {
                     await logout();
@@ -46,10 +46,24 @@ export function AuthProvider({ children }) {
     const fetchProfile = async () => {
         try {
             const res = await api.get('/Profile/MechanicProfile/');
-            setProfile(res.data);
-            console.log("Profile Data:", res.data); // Debugging
+
+            // --- LOGIC CHANGE: Check for Mobile Number ---
+            // If data exists AND mobile_number is not empty/null
+            if (res.data && res.data.mobile_number) {
+                setProfile(res.data);
+            } else {
+                console.log("Profile incomplete (Missing mobile number). Treating as New User.");
+                setProfile(null);
+            }
+
         } catch (error) {
-            console.error("Failed to fetch profile", error);
+            // If 404, it also means New User
+            if (error.response && error.response.status === 404) {
+                console.log("User has no profile yet (404)");
+                setProfile(null);
+            } else {
+                console.error("Failed to fetch profile:", error);
+            }
         }
     };
 
@@ -59,7 +73,9 @@ export function AuthProvider({ children }) {
         if (cookieString) {
             await SecureStore.setItemAsync('session_cookie', cookieString);
         }
-        await fetchProfile(); // Fetch profile immediately after login
+
+        // Check profile immediately after login
+        await fetchProfile();
     };
 
     const logout = async () => {
