@@ -51,7 +51,12 @@
         "earnings": "કમાણી",
         "jobsDone": "પૂર્ણ થયેલા કામ",
         "activeJob": "ચાલુ કામ",
-        "view": "જુઓ"
+        "view": "જુઓ",
+        "wsConnected": "જોડાયેલ",
+        "wsConnecting": "જોડાઈ રહ્યું છે...",
+        "wsDisconnected": "કનેક્શન તૂટ્યું",
+        "wsOffline": "ઑફલાઇન",
+        "wsReconnect": "ફરીથી જોડાવા માટે ટેપ કરો"
     },
     "verify": {
         "verification": "ચકાસણી",

@@ -17,30 +17,21 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
 }
 
-function RootLayoutNav() {
+function useNavigationGuard() {
   const { user, profile, loading } = useAuth() as AuthContextType;
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    console.log("[Layout] Navigation check - loading:", loading, "user:", !!user, "profile:", !!profile, "currentRoute:", segments[0]);
-
-    if (loading) {
-      console.log("[Layout] Still loading, skipping navigation");
-      return;
-    }
+    if (loading) return;
 
     const currentRoute = segments[0] as string | undefined;
 
     // --- CASE 1: NOT LOGGED IN ---
     if (!user) {
-      console.log("[Layout] No user - redirecting to login");
-      // Allow 'index' (splash), 'login', and 'verify'
       if (currentRoute !== 'index' && currentRoute !== 'login' && currentRoute !== 'verify') {
         router.replace('/login');
       }
-
-      // If we are on 'index' (or undefined/root) and not loading, we should move to 'login'
       if ((currentRoute === 'index' || currentRoute === undefined) && !loading) {
         router.replace('/login');
       }
@@ -49,36 +40,31 @@ function RootLayoutNav() {
 
     // --- CASE 2: LOGGED IN ---
     if (user) {
-      console.log("[Layout] User logged in. Profile:", profile ? "exists" : "null", "is_verified:", profile?.is_verified);
-
-      // A. Profile is Null (New User OR Missing Mobile Number)
       if (!profile) {
-        console.log("[Layout] No profile - redirecting to form");
-        // Force them to the Form to complete profile
         if (currentRoute !== 'form') {
           router.replace('/form');
         }
         return;
       }
 
-      // B. Profile Exists (Has Mobile Number) -> Check Verification
       if (profile.is_verified) {
-        console.log("[Layout] Profile verified - should go to dashboard, currentRoute:", currentRoute);
-        // Verified -> Go to Dashboard (if on intro screens OR undefined/root)
-        // Added 'login' to the list of screens to redirect FROM
         if (currentRoute === undefined || currentRoute === 'index' || currentRoute === 'login' || currentRoute === 'verify' || currentRoute === 'unverified' || currentRoute === 'form') {
-          console.log("[Layout] Redirecting to dashboard");
           router.replace('/dashboard');
         }
       } else {
-        console.log("[Layout] Profile NOT verified - redirecting to unverified");
-        // Unverified -> Go to Unverified Screen
         if (currentRoute !== 'unverified') {
           router.replace('/unverified' as any);
         }
       }
     }
   }, [user, profile, loading, segments]);
+}
+
+function RootLayoutNav() {
+  const { loading } = useAuth() as AuthContextType;
+
+  // Use the navigation guard hook
+  useNavigationGuard();
 
   if (loading) {
     return (
@@ -89,15 +75,18 @@ function RootLayoutNav() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="login" />
-      <Stack.Screen name="verify" />
-      <Stack.Screen name="form" />
-      <Stack.Screen name="unverified" />
-      <Stack.Screen name="dashboard" />
-      <Stack.Screen name="profile" />
-    </Stack>
+    <WebSocketProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="verify" />
+        <Stack.Screen name="form" />
+        <Stack.Screen name="unverified" />
+        <Stack.Screen name="dashboard" />
+        <Stack.Screen name="profile" />
+        <Stack.Screen name="job/[id]" />
+      </Stack>
+    </WebSocketProvider>
   );
 }
 
@@ -105,9 +94,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <WebSocketProvider>
-          <RootLayoutNav />
-        </WebSocketProvider>
+        <RootLayoutNav />
       </AuthProvider>
     </GestureHandlerRootView>
   );

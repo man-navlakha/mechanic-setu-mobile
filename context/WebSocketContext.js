@@ -1,6 +1,5 @@
 import { Audio } from 'expo-av';
 import * as Location from 'expo-location';
-import { useRouter } from 'expo-router';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
 import api from '../utils/api';
@@ -23,13 +22,13 @@ export const useWebSocket = () => {
 };
 
 export const WebSocketProvider = ({ children }) => {
-    const router = useRouter();
     const { user } = useAuth(); // Get user from AuthContext
 
     // --- STATE ---
     const [socket, setSocket] = useState(null);
     const socketRef = useRef(null);
     const [isOnline, setIsOnlineState] = useState(false);
+    const [connectionStatus, setConnectionStatus] = useState('disconnected'); // 'connecting' | 'connected' | 'disconnected'
     const [job, setJob] = useState(null);
     const jobRef = useRef(null);
     const [mechanicCoords, setMechanicCoords] = useState(null);
@@ -123,9 +122,56 @@ export const WebSocketProvider = ({ children }) => {
         });
     };
 
+    // --- DISCONNECTION NOTIFICATION ---
+    const displayDisconnectedNotification = async () => {
+        if (!notifee) return; // Skip if in Expo Go
+
+        const channelId = await notifee.createChannel({
+            id: 'connection_status',
+            name: 'Connection Status',
+            sound: 'default',
+            importance: 3, // AndroidImportance.DEFAULT
+            visibility: 1, // AndroidVisibility.PUBLIC
+        });
+
+        await notifee.displayNotification({
+            id: 'connection_lost',
+            title: '⚠️ Connection Lost',
+            body: 'You are disconnected from the server. Tap to reconnect.',
+            data: { action: 'reconnect' },
+            android: {
+                channelId,
+                importance: 3,
+                visibility: 1,
+                smallIcon: 'ic_notification', // Make sure this icon exists
+                pressAction: {
+                    id: 'reconnect',
+                    launchActivity: 'default',
+                },
+                actions: [
+                    { title: '🔄 Reconnect', pressAction: { id: 'reconnect', launchActivity: 'default' } },
+                ],
+            },
+        });
+    };
+
+    // Cancel disconnection notification when connected
+    const cancelDisconnectedNotification = async () => {
+        if (!notifee) return;
+        await notifee.cancelNotification('connection_lost');
+    };
+
     const handleNotificationAction = async (actionId, data) => {
         if (!notifee) return;
         const jobId = data?.jobId;
+
+        // Handle reconnect action from disconnection notification
+        if (actionId === 'reconnect') {
+            console.log("[WS] Reconnect triggered from notification");
+            await notifee.cancelNotification('connection_lost');
+            connectWebSocket();
+            return;
+        }
 
         stopRing();
         await notifee.cancelNotification('job_alert');
@@ -206,12 +252,15 @@ export const WebSocketProvider = ({ children }) => {
             const wsUrl = `wss://${HOST}/ws/job_notifications/?token=${wsToken}`;
 
             console.log("[WS] Connecting:", wsUrl);
+            setConnectionStatus('connecting');
             const ws = new WebSocket(wsUrl);
             socketRef.current = ws;
 
             ws.onopen = () => {
                 console.log("[WS] Connected");
                 setSocket(ws);
+                setConnectionStatus('connected');
+                cancelDisconnectedNotification(); // Cancel any existing disconnection notification
                 startLocationTracking();
             };
 
@@ -225,8 +274,18 @@ export const WebSocketProvider = ({ children }) => {
             ws.onclose = () => {
                 console.log("[WS] Disconnected");
                 setSocket(null);
+                setConnectionStatus('disconnected');
                 stopLocationTracking();
-                if (intendedOnlineState.current) setTimeout(connectWebSocket, 3000);
+                // Show notification only if user intended to be online (unexpected disconnect)
+                if (intendedOnlineState.current) {
+                    displayDisconnectedNotification();
+                    setTimeout(connectWebSocket, 3000);
+                }
+            };
+
+            ws.onerror = () => {
+                console.log("[WS] Error");
+                setConnectionStatus('disconnected');
             };
 
         } catch (err) {
@@ -238,6 +297,7 @@ export const WebSocketProvider = ({ children }) => {
         intendedOnlineState.current = false;
         socketRef.current?.close();
         setSocket(null);
+        setConnectionStatus('disconnected');
         stopLocationTracking();
     };
 
@@ -347,6 +407,7 @@ export const WebSocketProvider = ({ children }) => {
         } else {
             await updateStatus("OFFLINE");
             disconnectWebSocket();
+            cancelDisconnectedNotification(); // Cancel notification when going offline
             stopRing();
         }
     };
@@ -374,10 +435,17 @@ export const WebSocketProvider = ({ children }) => {
             Alert.alert("Error", "Failed to cancel job.");
         }
     };
+    // Manual reconnect function
+    const reconnect = async () => {
+        if (connectionStatus === 'connected' || connectionStatus === 'connecting') return;
+        console.log("[WS] Manual reconnect triggered");
+        cancelDisconnectedNotification(); // Cancel notification when manually reconnecting
+        connectWebSocket();
+    };
 
     return (
         <WebSocketContext.Provider value={{
-            isOnline, setIsOnline, job, mechanicCoords, acceptJob, rejectJob, completeJob, cancelJob
+            isOnline, setIsOnline, connectionStatus, job, mechanicCoords, acceptJob, rejectJob, completeJob, cancelJob, reconnect
         }}>
             {children}
         </WebSocketContext.Provider>

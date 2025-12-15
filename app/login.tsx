@@ -1,28 +1,28 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { ArrowRight, Globe, Mail } from 'lucide-react-native';
+import { useNavigation } from 'expo-router';
+import { ArrowRight, Globe, Lock, Mail } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LanguageModal from '../components/LanguageModal';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 
 export default function LoginScreen() {
-  const router = useRouter();
+  const navigation = useNavigation();
   const { t, i18n } = useTranslation();
   const { user, error: authError } = useAuth() as any;
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      router.replace('/dashboard');
-    }
-  }, [user]);
+  // Dark mode detection
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   // Sync auth error to local state
   useEffect(() => {
@@ -31,10 +31,12 @@ export default function LoginScreen() {
     }
   }, [authError]);
 
+  // If user is logged in, show loading (layout will handle redirect)
   if (user) {
     return (
-      <View className="flex-1 justify-center items-center bg-slate-100">
-        <ActivityIndicator size="large" color="#0f172a" />
+      <View className="flex-1 justify-center items-center bg-slate-100 dark:bg-slate-900">
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+        <ActivityIndicator size="large" color={isDark ? "#60a5fa" : "#0f172a"} />
       </View>
     );
   }
@@ -66,15 +68,13 @@ export default function LoginScreen() {
       if (Array.isArray(cookie)) {
         cookie = cookie.join('; ');
       }
-      // Navigate to Verify screen (You need to create this later)
-      router.push({
-        pathname: "/verify",
-        params: {
-          key: res.data.key,
-          id: res.data.id,
-          email: email,
-          cookie: cookie || '' // <--- Pass the cookie here
-        }
+      // Navigate to Verify screen
+      // Use standard navigation.navigate for safety if useRouter is buggy
+      (navigation as any).navigate('verify', {
+        key: res.data.key,
+        id: res.data.id,
+        email: email,
+        cookie: cookie || '' // <--- Pass the cookie here
       });
 
     } catch (err: any) {
@@ -89,11 +89,12 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient
-      // Background Gradient similar to your web version
-      colors={['#f8fafc', '#e2e8f0', '#cbd5e1']}
+      // Background Gradient - Dark mode aware
+      colors={isDark ? ['#0f172a', '#1e293b', '#334155'] : ['#f8fafc', '#e2e8f0', '#cbd5e1']}
       className="flex-1"
     >
       <SafeAreaView className="flex-1">
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           className="flex-1 justify-center px-6"
@@ -102,35 +103,35 @@ export default function LoginScreen() {
           <View className="absolute top-4 right-0 z-50">
             <TouchableOpacity
               onPress={() => setShowLanguageModal(true)}
-              className="bg-white/80 p-2 rounded-full shadow-sm border border-slate-200"
+              className="bg-white/80 dark:bg-slate-700/80 p-2.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-600"
             >
-              <Globe size={24} color="#475569" />
+              <Globe size={22} color={isDark ? "#94a3b8" : "#475569"} />
             </TouchableOpacity>
           </View>
 
           <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
 
             {/* Main Card Container */}
-            <View className="bg-white/90 p-6 rounded-3xl shadow-xl backdrop-blur-md border border-white/20">
+            <View className="bg-white/95 dark:bg-slate-800/95 p-8 rounded-3xl shadow-2xl backdrop-blur-md border border-white/30 dark:border-slate-700/50">
 
               {/* Header / Logo Section */}
               <View className="items-center mb-8">
-                <View className="bg-blue-100 p-1 rounded-full mb-4">
+                <View className="bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 p-2 rounded-full mb-5 shadow-lg">
                   <Image
                     source={require('../assets/logo.png')} // Replace with your ms.png
-                    className="w-[100px] h-[100px] p-4 "
+                    className="w-[90px] h-[90px]"
                     resizeMode="contain"
                   />
                 </View>
-                <Text className="text-3xl font-bold text-slate-800 text-center">
+                <Text className="text-3xl font-extrabold text-slate-800 dark:text-white text-center tracking-tight">
                   Setu Partner
                 </Text>
-                <Text className="text-slate-500 italic mt-1">
+                <Text className="text-slate-500 dark:text-slate-400 italic mt-1 text-base">
                   {t('slogan')}
                 </Text>
 
-                <View className="bg-slate-100 px-3 py-1 rounded-full mt-4 border border-slate-200">
-                  <Text className="text-xs font-semibold text-slate-700">
+                <View className="bg-slate-100 dark:bg-slate-700 px-4 py-2 rounded-full mt-5 border border-slate-200 dark:border-slate-600">
+                  <Text className="text-xs font-semibold text-slate-600 dark:text-slate-300">
                     {t('welcomeBack')}
                   </Text>
                 </View>
@@ -138,13 +139,13 @@ export default function LoginScreen() {
 
               {/* Error Message Display */}
               {error ? (
-                <View className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded-r">
-                  <Text className="text-red-700 font-medium">{error}</Text>
+                <View className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-4 mb-5 rounded-r-xl">
+                  <Text className="text-red-700 dark:text-red-400 font-medium">{error}</Text>
                 </View>
               ) : null}
 
               {/* Form Section */}
-              <View className="space-y-4">
+              <View className="space-y-5">
 
                 {/* DEBUG TOOL: Remove in production */}
                 <TouchableOpacity
@@ -156,40 +157,76 @@ export default function LoginScreen() {
                     console.log("API Health Check:", isApiHealthy);
                     Alert.alert("Debug Info", `Cookie present: ${!!cookie}\nSee logs for details.`);
                   }}
-                  className="self-center mb-2 bg-gray-200 px-3 py-1 rounded"
+                  className="self-center mb-3 bg-slate-100 dark:bg-slate-700 px-4 py-2 rounded-full"
                 >
-                  <Text className="text-xs text-gray-600">Run Diagnostics</Text>
+                  <Text className="text-xs text-slate-500 dark:text-slate-400 font-medium">🔧 Run Diagnostics</Text>
                 </TouchableOpacity>
 
+                {/* Email Input - Redesigned */}
                 <View>
-                  <Text className="text-slate-700 font-semibold mb-2 ml-1">
+                  <Text className="text-slate-700 dark:text-slate-300 font-semibold mb-3 ml-1 text-base">
                     {t('enterEmail')}
                   </Text>
-                  <View className="relative flex-row items-center">
-                    <View className="absolute left-4 z-10 ">
-                      <Mail size={20} color="#64748b" />
+
+                  {/* Modern Input Container */}
+                  <View className={`
+                    relative flex-row items-center 
+                    bg-slate-50 dark:bg-slate-700/50 
+                    rounded-2xl 
+                    border-2 
+                    ${isFocused
+                      ? 'border-blue-500 dark:border-blue-400 shadow-lg shadow-blue-500/20'
+                      : 'border-slate-200 dark:border-slate-600'
+                    }
+                    transition-all duration-200
+                  `}>
+                    {/* Icon Container */}
+                    <View className={`
+                      absolute left-0 z-10 
+                      h-full px-4 
+                      justify-center items-center
+                      border-r border-slate-200 dark:border-slate-600
+                      bg-slate-100 dark:bg-slate-600/50
+                      rounded-l-2xl
+                    `}>
+                      <Mail size={20} color={isFocused ? (isDark ? "#60a5fa" : "#2563eb") : (isDark ? "#94a3b8" : "#64748b")} />
                     </View>
+
                     <TextInput
-                      className="w-full bg-slate-50 border  border-slate-300 rounded-xl py-4 pl-12 pr-4 text-slate-800 text-base focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      className="flex-1 bg-transparent py-4 pl-16 pr-4 text-slate-800 dark:text-white text-base font-medium"
                       placeholder={t('emailPlaceholder')}
-                      placeholderTextColor="#94a3b8"
+                      placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
                       value={email}
                       onChangeText={setEmail}
                       autoCapitalize="none"
                       keyboardType="email-address"
                       editable={!loading}
+                      onFocus={() => setIsFocused(true)}
+                      onBlur={() => setIsFocused(false)}
                     />
                   </View>
-                  <Text className="text-xs text-slate-400 mt-2 ml-1">
-                    {t('emailHint')}
-                  </Text>
+
+                  {/* Hint Text */}
+                  <View className="flex-row items-center mt-3 ml-1">
+                    <Lock size={12} color={isDark ? "#64748b" : "#94a3b8"} />
+                    <Text className="text-xs text-slate-400 dark:text-slate-500 ml-1.5">
+                      {t('emailHint')}
+                    </Text>
+                  </View>
                 </View>
 
-                {/* Submit Button */}
+                {/* Submit Button - Redesigned */}
                 <TouchableOpacity
                   onPress={handleEmailLogin}
                   disabled={loading}
-                  className={`w-full py-4 rounded-xl flex-row justify-center items-center mt-4 ${loading || !email ? 'bg-slate-400' : 'bg-slate-900'}`}
+                  className={`
+                    w-full py-4 rounded-2xl flex-row justify-center items-center mt-2
+                    ${loading || !email
+                      ? 'bg-slate-300 dark:bg-slate-600'
+                      : 'bg-blue-600 dark:bg-blue-500 shadow-lg shadow-blue-500/30'
+                    }
+                  `}
+                  style={{ elevation: loading || !email ? 0 : 4 }}
                 >
                   {loading ? (
                     <>
@@ -199,23 +236,25 @@ export default function LoginScreen() {
                   ) : (
                     <>
                       <Text className="text-white font-bold text-lg mr-2">{t('continue')}</Text>
-                      <ArrowRight size={20} color="white" />
+                      <View className="bg-white/20 p-1 rounded-full">
+                        <ArrowRight size={18} color="white" />
+                      </View>
                     </>
                   )}
                 </TouchableOpacity>
               </View>
 
               {/* Footer Links */}
-              <View className="mt-8 pt-6 border-t border-slate-200">
-                <Text className="text-center text-slate-500 text-sm leading-5">
+              <View className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <Text className="text-center text-slate-500 dark:text-slate-400 text-sm leading-6">
                   {t('agree')}{"\n"}
-                  <Text className="text-blue-600 font-bold">{t('terms')}</Text> {t('and')} <Text className="text-blue-600 font-bold">{t('privacy')}</Text>
+                  <Text className="text-blue-600 dark:text-blue-400 font-bold">{t('terms')}</Text> {t('and')} <Text className="text-blue-600 dark:text-blue-400 font-bold">{t('privacy')}</Text>
                 </Text>
               </View>
             </View>
 
             {/* Copyright Footer */}
-            <Text className="text-center text-slate-400 text-xs mt-8">
+            <Text className="text-center text-slate-400 dark:text-slate-500 text-xs mt-8">
               {t('copyright')}
             </Text>
 

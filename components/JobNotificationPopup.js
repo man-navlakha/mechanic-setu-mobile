@@ -20,15 +20,16 @@ const SWIPEABLE_DIMENSIONS = BUTTON_HEIGHT - 2 * BUTTON_PADDING;
 const H_SWIPE_RANGE = BUTTON_WIDTH - 2 * BUTTON_PADDING - SWIPEABLE_DIMENSIONS;
 
 // --- Helper: Vehicle Icon ---
-const getVehicleIcon = (type) => {
+const getVehicleIcon = (type, isDark) => {
     const t = type?.toLowerCase();
-    if (t?.includes('bike') || t?.includes('motorcycle')) return <Bike size={24} color="#2563eb" />;
-    if (t?.includes('truck')) return <Truck size={24} color="#2563eb" />;
-    return <Car size={24} color="#2563eb" />;
+    const color = isDark ? "#60a5fa" : "#2563eb";
+    if (t?.includes('bike') || t?.includes('motorcycle')) return <Bike size={24} color={color} />;
+    if (t?.includes('truck')) return <Truck size={24} color={color} />;
+    return <Car size={24} color={color} />;
 };
 
 // --- Modern Swipe Button Component ---
-const SwipeButton = ({ onToggle, t }) => {
+const SwipeButton = ({ onToggle, t, isDark }) => {
     const X = useSharedValue(0);
     const [isSuccess, setIsSuccess] = useState(false);
 
@@ -71,15 +72,28 @@ const SwipeButton = ({ onToggle, t }) => {
         opacity: interpolate(X.value, [0, H_SWIPE_RANGE / 2], [1, 0], Extrapolate.CLAMP),
     }));
 
+    const dynamicStyles = {
+        swipeContainer: {
+            backgroundColor: isDark ? '#334155' : '#f1f5f9',
+            borderColor: isDark ? '#475569' : '#e2e8f0',
+        },
+        swipeable: {
+            backgroundColor: isDark ? '#1e293b' : 'white',
+        },
+        swipeText: {
+            color: isDark ? '#94a3b8' : '#64748b',
+        },
+    };
+
     return (
-        <View style={styles.swipeContainer}>
+        <View style={[styles.swipeContainer, dynamicStyles.swipeContainer]}>
             <Animated.View style={[styles.colorOverlay, animatedOverlayStyle]} />
-            <Animated.Text style={[styles.swipeText, animatedTextStyle]}>
+            <Animated.Text style={[styles.swipeText, dynamicStyles.swipeText, animatedTextStyle]}>
                 {isSuccess ? t('jobPopup.accepted') : t('jobPopup.swipeToAccept')}
             </Animated.Text>
             <GestureDetector gesture={panGesture}>
-                <Animated.View style={[styles.swipeable, animatedKnobStyle]}>
-                    {isSuccess ? <Check size={24} color="green" /> : <ChevronsRight size={24} color="#2563eb" />}
+                <Animated.View style={[styles.swipeable, dynamicStyles.swipeable, animatedKnobStyle]}>
+                    {isSuccess ? <Check size={24} color="#22c55e" /> : <ChevronsRight size={24} color={isDark ? "#60a5fa" : "#2563eb"} />}
                 </Animated.View>
             </GestureDetector>
         </View>
@@ -87,7 +101,7 @@ const SwipeButton = ({ onToggle, t }) => {
 };
 
 // --- Countdown Timer ---
-const CountdownTimer = ({ seconds, onExpire, t }) => {
+const CountdownTimer = ({ seconds, onExpire, t, isDark }) => {
     const [timeLeft, setTimeLeft] = useState(seconds);
 
     useEffect(() => {
@@ -100,8 +114,8 @@ const CountdownTimer = ({ seconds, onExpire, t }) => {
     }, [timeLeft]);
 
     return (
-        <Text style={styles.timerText}>
-            {t('jobPopup.autoReject')} <Text style={{ color: '#d97706', fontWeight: 'bold' }}>{timeLeft}s</Text>
+        <Text style={[styles.timerText, { color: isDark ? '#94a3b8' : '#64748b' }]}>
+            {t('jobPopup.autoReject')} <Text style={{ color: isDark ? '#fbbf24' : '#d97706', fontWeight: 'bold' }}>{timeLeft}s</Text>
         </Text>
     );
 };
@@ -109,7 +123,31 @@ const CountdownTimer = ({ seconds, onExpire, t }) => {
 // --- Main Component ---
 export default function JobNotificationPopup({ job, onAccept, onReject }) {
     const { t } = useTranslation();
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === 'dark';
+
     if (!job) return null;
+
+    // Dynamic colors for dark mode
+    const colors = {
+        card: isDark ? '#1e293b' : 'white',
+        body: isDark ? '#0f172a' : 'white',
+        infoLabel: isDark ? '#94a3b8' : '#64748b',
+        infoValue: isDark ? '#e2e8f0' : '#1e293b',
+        // Info row colors
+        blueRowBg: isDark ? 'rgba(37, 99, 235, 0.15)' : '#eff6ff',
+        blueRowBorder: isDark ? 'rgba(37, 99, 235, 0.3)' : '#dbeafe',
+        blueIconBg: isDark ? 'rgba(37, 99, 235, 0.25)' : '#dbeafe',
+        yellowRowBg: isDark ? 'rgba(217, 119, 6, 0.15)' : '#fffbeb',
+        yellowRowBorder: isDark ? 'rgba(217, 119, 6, 0.3)' : '#fef3c7',
+        yellowIconBg: isDark ? 'rgba(217, 119, 6, 0.25)' : '#fef3c7',
+        greenRowBg: isDark ? 'rgba(22, 163, 74, 0.15)' : '#f0fdf4',
+        greenRowBorder: isDark ? 'rgba(22, 163, 74, 0.3)' : '#dcfce7',
+        greenIconBg: isDark ? 'rgba(22, 163, 74, 0.25)' : '#dcfce7',
+        footer: isDark ? '#1e293b' : 'white',
+        timerBg: isDark ? '#334155' : '#f8fafc',
+        timerBorder: isDark ? '#475569' : '#e2e8f0',
+    };
 
     return (
         <View style={styles.overlay}>
@@ -118,7 +156,7 @@ export default function JobNotificationPopup({ job, onAccept, onReject }) {
                 <Text style={styles.rejectText}>{t('jobPopup.reject')}</Text>
             </TouchableOpacity>
 
-            <View style={styles.card}>
+            <View style={[styles.card, { backgroundColor: colors.card }]}>
                 <View style={styles.header}>
                     <View style={styles.headerContent}>
                         <View style={styles.iconBox}><Wrench size={24} color="white" /></View>
@@ -133,36 +171,36 @@ export default function JobNotificationPopup({ job, onAccept, onReject }) {
                     <View style={styles.pulsingDot} />
                 </View>
 
-                <View style={styles.body}>
-                    <View style={[styles.infoRow, { backgroundColor: '#eff6ff', borderColor: '#dbeafe' }]}>
-                        <View style={[styles.infoIconBox, { backgroundColor: '#dbeafe' }]}>{getVehicleIcon(job.vehical_type)}</View>
+                <View style={[styles.body, { backgroundColor: colors.body }]}>
+                    <View style={[styles.infoRow, { backgroundColor: colors.blueRowBg, borderColor: colors.blueRowBorder }]}>
+                        <View style={[styles.infoIconBox, { backgroundColor: colors.blueIconBg }]}>{getVehicleIcon(job.vehical_type, isDark)}</View>
                         <View>
-                            <Text style={styles.infoLabel}>{t('jobPopup.vehicleType')}</Text>
-                            <Text style={styles.infoValue}>{job.vehical_type || t('jobPopup.unknown')}</Text>
+                            <Text style={[styles.infoLabel, { color: colors.infoLabel }]}>{t('jobPopup.vehicleType')}</Text>
+                            <Text style={[styles.infoValue, { color: colors.infoValue }]}>{job.vehical_type || t('jobPopup.unknown')}</Text>
                         </View>
                     </View>
 
-                    <View style={[styles.infoRow, { backgroundColor: '#fffbeb', borderColor: '#fef3c7' }]}>
-                        <View style={[styles.infoIconBox, { backgroundColor: '#fef3c7' }]}><Wrench size={20} color="#d97706" /></View>
+                    <View style={[styles.infoRow, { backgroundColor: colors.yellowRowBg, borderColor: colors.yellowRowBorder }]}>
+                        <View style={[styles.infoIconBox, { backgroundColor: colors.yellowIconBg }]}><Wrench size={20} color={isDark ? "#fbbf24" : "#d97706"} /></View>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.infoLabel}>{t('jobPopup.problem')}</Text>
-                            <Text style={styles.infoValue} numberOfLines={2}>{job.problem || t('jobPopup.noDescription')}</Text>
+                            <Text style={[styles.infoLabel, { color: colors.infoLabel }]}>{t('jobPopup.problem')}</Text>
+                            <Text style={[styles.infoValue, { color: colors.infoValue }]} numberOfLines={2}>{job.problem || t('jobPopup.noDescription')}</Text>
                         </View>
                     </View>
 
-                    <View style={[styles.infoRow, { backgroundColor: '#f0fdf4', borderColor: '#dcfce7' }]}>
-                        <View style={[styles.infoIconBox, { backgroundColor: '#dcfce7' }]}><MapPin size={20} color="#16a34a" /></View>
+                    <View style={[styles.infoRow, { backgroundColor: colors.greenRowBg, borderColor: colors.greenRowBorder }]}>
+                        <View style={[styles.infoIconBox, { backgroundColor: colors.greenIconBg }]}><MapPin size={20} color={isDark ? "#4ade80" : "#16a34a"} /></View>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.infoLabel}>{t('jobPopup.location')}</Text>
-                            <Text style={styles.infoValue} numberOfLines={1}>{job.location || t('jobPopup.locationShared')}</Text>
+                            <Text style={[styles.infoLabel, { color: colors.infoLabel }]}>{t('jobPopup.location')}</Text>
+                            <Text style={[styles.infoValue, { color: colors.infoValue }]} numberOfLines={1}>{job.location || t('jobPopup.locationShared')}</Text>
                         </View>
                     </View>
                 </View>
 
-                <View style={styles.footer}>
-                    <SwipeButton onToggle={onAccept} t={t} />
-                    <View style={styles.timerContainer}>
-                        <CountdownTimer seconds={30} onExpire={onReject} t={t} />
+                <View style={[styles.footer, { backgroundColor: colors.footer }]}>
+                    <SwipeButton onToggle={onAccept} t={t} isDark={isDark} />
+                    <View style={[styles.timerContainer, { backgroundColor: colors.timerBg, borderColor: colors.timerBorder }]}>
+                        <CountdownTimer seconds={30} onExpire={onReject} t={t} isDark={isDark} />
                     </View>
                 </View>
             </View>

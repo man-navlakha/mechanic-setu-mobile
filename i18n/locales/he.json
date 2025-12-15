@@ -51,7 +51,12 @@
         "earnings": "कमाई",
         "jobsDone": "पूरे किए गए काम",
         "activeJob": "चल रहा काम",
-        "view": "देखें"
+        "view": "देखें",
+        "wsConnected": "जुड़े हुए",
+        "wsConnecting": "जुड़ रहे हैं...",
+        "wsDisconnected": "कनेक्शन टूटा",
+        "wsOffline": "ऑफलाइन",
+        "wsReconnect": "फिर से जोड़ने के लिए टैप करें"
     },
     "verify": {
         "Verification": "सत्यापन",
