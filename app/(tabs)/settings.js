@@ -1,6 +1,6 @@
 
 import { useRouter } from 'expo-router';
-import { ChevronRight, Globe, LogOut, Moon, Sun } from 'lucide-react-native';
+import { ChevronRight, Globe, Info, LogOut, Moon, Sun } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -65,6 +65,13 @@ export default function SettingsScreen() {
                     title="Language"
                     subtitle="Change app language"
                     onPress={() => setShowLanguageModal(true)}
+                />
+
+                <SettingItem
+                    icon={<Info size={24} color={isDark ? "#34d399" : "#10b981"} />}
+                    title="About Us"
+                    subtitle="About Mechanic Setu"
+                    onPress={() => router.push('/about')}
                 />
 
                 <SettingItem

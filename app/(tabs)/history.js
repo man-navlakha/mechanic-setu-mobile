@@ -87,35 +87,21 @@ export default function HistoryScreen() {
                 </Text>
 
                 {/* Wallet Card */}
-                <View className="bg-white dark:bg-slate-800 rounded-2xl p-5 mt-0 shadow-sm">
-                    <Text className="text-slate-500 dark:text-slate-400 text-sm">
-                        {t('profile.totalEarnings') || 'Your Total Earnings'}
-                    </Text>
-
-                    <Text className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">
-                        ₹{historyData?.total_earning || 0}
-                    </Text>
-
-                    <View className="flex-row justify-between mt-4">
-                        <View className="items-center flex-1">
-                            <Text className="text-slate-400 text-xs">
-                                {t('profile.completedJobs') || 'Completed Jobs'}
-                            </Text>
-                            <Text className="font-bold text-slate-800 dark:text-slate-100">
-                                {historyData?.completed_jobs || 0}
-                            </Text>
+                {/* Earnings Card (From Dashboard Style) */}
+                <View className="bg-slate-50 dark:bg-slate-700 rounded-2xl p-5 border border-slate-100 dark:border-slate-600 flex-row divide-x divide-slate-200 dark:divide-slate-600 mb-6">
+                    <View className="flex-1 items-center pr-4">
+                        <View className="flex-row items-center mb-1">
+                            <Text className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase ml-1">  ₹ {t('dashboard.earnings') || "Earnings"}</Text>
                         </View>
+                        <Text className="text-2xl font-black text-slate-900 dark:text-slate-100">₹ {historyData?.total_earning || 0}</Text>
+                    </View>
 
-                        <View className="w-px bg-slate-200 dark:bg-slate-700" />
-
-                        <View className="items-center flex-1">
-                            <Text className="text-slate-400 text-xs">
-                                {t('profile.pendingJobs') || 'Pending Jobs'}
-                            </Text>
-                            <Text className="font-bold text-slate-800 dark:text-slate-100">
-                                {historyData?.pending_jobs || 0}
-                            </Text>
+                    <View className="flex-1 items-center pl-4">
+                        <View className="flex-row items-center mb-1">
+                            <History size={14} color={isDark ? "#94a3b8" : "#64748b"} />
+                            <Text className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase ml-1">{t('dashboard.jobsDone') || "Jobs Done"}</Text>
                         </View>
+                        <Text className="text-2xl font-black text-slate-900 dark:text-slate-100">{historyData?.completed_jobs || 0}</Text>
                     </View>
                 </View>
 
