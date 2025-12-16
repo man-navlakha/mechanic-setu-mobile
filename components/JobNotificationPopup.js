@@ -1,4 +1,5 @@
 import { Bike, Car, Check, ChevronsRight, Clock, MapPin, Truck, Wrench, X } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';

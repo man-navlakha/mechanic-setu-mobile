@@ -1,5 +1,6 @@
 import { Audio } from 'expo-av';
 import * as Location from 'expo-location';
+import { router } from 'expo-router';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
 import api from '../utils/api';
@@ -241,7 +242,7 @@ export const WebSocketProvider = ({ children }) => {
 
     // --- 5. WEBSOCKET ---
     const connectWebSocket = async () => {
-        if (socketRef.current?.readyState === WebSocket.OPEN) return;
+        if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) return;
 
         try {
             const res = await api.get("core/ws-token/");
@@ -304,6 +305,10 @@ export const WebSocketProvider = ({ children }) => {
     const handleMessage = async (data) => {
         switch (data.type) {
             case "new_job":
+                if (jobRef.current?.id === data.service_request.id) {
+                    console.log(`[WS] Duplicate Job Alert ignored: ${data.service_request.id}`);
+                    return;
+                }
                 console.log("[WS] New Job:", data.service_request.id);
                 setJob(data.service_request);
 
@@ -443,10 +448,12 @@ export const WebSocketProvider = ({ children }) => {
         connectWebSocket();
     };
 
+    const value = React.useMemo(() => ({
+        isOnline, setIsOnline, connectionStatus, job, mechanicCoords, acceptJob, rejectJob, completeJob, cancelJob, reconnect
+    }), [isOnline, connectionStatus, job, mechanicCoords]);
+
     return (
-        <WebSocketContext.Provider value={{
-            isOnline, setIsOnline, connectionStatus, job, mechanicCoords, acceptJob, rejectJob, completeJob, cancelJob, reconnect
-        }}>
+        <WebSocketContext.Provider value={value}>
             {children}
         </WebSocketContext.Provider>
     );

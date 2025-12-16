@@ -1,4 +1,4 @@
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -21,9 +21,11 @@ function useNavigationGuard() {
   const { user, profile, loading } = useAuth() as AuthContextType;
   const segments = useSegments();
   const router = useRouter();
+  const navigationState = useRootNavigationState();
+
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || !navigationState?.key) return;
 
     const currentRoute = segments[0] as string | undefined;
 
@@ -49,7 +51,7 @@ function useNavigationGuard() {
 
       if (profile.is_verified) {
         if (currentRoute === undefined || currentRoute === 'index' || currentRoute === 'login' || currentRoute === 'verify' || currentRoute === 'unverified' || currentRoute === 'form') {
-          router.replace('/dashboard');
+          router.replace('/(tabs)');
         }
       } else {
         if (currentRoute !== 'unverified') {
@@ -60,7 +62,7 @@ function useNavigationGuard() {
   }, [user, profile, loading, segments]);
 }
 
-function RootLayoutNav() {
+function RootLayoutContent() {
   const { loading } = useAuth() as AuthContextType;
 
   // Use the navigation guard hook
@@ -68,7 +70,7 @@ function RootLayoutNav() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
         <ActivityIndicator size="large" color="#0000ff" />
       </View>
     );
@@ -76,26 +78,28 @@ function RootLayoutNav() {
 
   return (
     <WebSocketProvider>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="verify" />
-        <Stack.Screen name="form" />
-        <Stack.Screen name="unverified" />
-        <Stack.Screen name="dashboard" />
-        <Stack.Screen name="profile" />
-        <Stack.Screen name="job/[id]" />
-      </Stack>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="index" />
+          <Stack.Screen name="login" />
+          <Stack.Screen name="verify" />
+          <Stack.Screen name="form" />
+          <Stack.Screen name="unverified" />
+          <Stack.Screen name="job/[id]" />
+        </Stack>
+      </GestureHandlerRootView>
     </WebSocketProvider>
   );
 }
 
-export default function RootLayout() {
+export default function RootLayoutNav() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <RootLayoutNav />
-      </AuthProvider>
-    </GestureHandlerRootView>
+    <AuthProvider>
+      <RootLayoutContent />
+    </AuthProvider>
   );
 }
+
+
+

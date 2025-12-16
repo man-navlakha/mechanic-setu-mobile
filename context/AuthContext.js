@@ -124,8 +124,18 @@ export function AuthProvider({ children }) {
         await SecureStore.deleteItemAsync('user_data');
     };
 
+    const value = React.useMemo(() => ({
+        user,
+        profile,
+        loading,
+        error,
+        login,
+        logout,
+        refreshProfile: fetchProfile
+    }), [user, profile, loading, error]);
+
     return (
-        <AuthContext.Provider value={{ user, profile, loading, error, login, logout, refreshProfile: fetchProfile }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );

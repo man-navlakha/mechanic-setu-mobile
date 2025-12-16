@@ -1,7 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Globe } from 'lucide-react-native';
-import { useColorScheme } from 'nativewind';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -16,10 +15,6 @@ export default function VerifyScreen() {
     const { t } = useTranslation();
     const params = useLocalSearchParams();
 
-    // Dark mode detection
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === 'dark';
-
     // State Management
     const [showLanguageModal, setShowLanguageModal] = useState(false);
     const [otp, setOtp] = useState(new Array(6).fill(''));
@@ -31,10 +26,10 @@ export default function VerifyScreen() {
     const [timer, setTimer] = useState(120);
     const [isResendDisabled, setIsResendDisabled] = useState(true);
 
-    // Refs for the 6 inputs to manage focus
+    // Refs
     const inputRefs = useRef([]);
 
-    // Context data (ID and Key are critical for verification)
+    // Context
     const [ctx, setCtx] = useState({
         key: params.key || null,
         id: params.id || null,
@@ -42,7 +37,8 @@ export default function VerifyScreen() {
         email: params.email || null,
     });
 
-    const sessionCookie = params.cookie;
+
+
 
     // Timer Logic
     useEffect(() => {
@@ -57,28 +53,21 @@ export default function VerifyScreen() {
         return () => clearInterval(interval);
     }, [isResendDisabled, timer]);
 
-    // Handle Input Change
     const handleChange = (text, index) => {
-        // Only allow numbers
         if (isNaN(text)) return;
-
         const newOtp = [...otp];
         newOtp[index] = text;
         setOtp(newOtp);
 
-        // Auto-focus next input if typing a number
         if (text.length === 1 && index < 5) {
             inputRefs.current[index + 1]?.focus();
         }
     };
 
-    // Handle Backspace
     const handleKeyPress = (e, index) => {
         if (e.nativeEvent.key === 'Backspace') {
-            // If current box is empty, move to previous
             if (!otp[index] && index > 0) {
                 inputRefs.current[index - 1]?.focus();
-                // Clear previous box value
                 const newOtp = [...otp];
                 newOtp[index - 1] = '';
                 setOtp(newOtp);
@@ -86,7 +75,6 @@ export default function VerifyScreen() {
         }
     };
 
-    // 1. Verify OTP Function
     const verifyOtp = async () => {
         setError('');
         const code = otp.join('');
@@ -104,36 +92,28 @@ export default function VerifyScreen() {
                 otp: otp.join('')
             };
 
-            console.log("[Verify] Session Cookie from params:", sessionCookie);
-            console.log("[Verify] Sending OTP verification...");
+            const verifyRes = await api.post('/users/otp-verify/', payload);
 
-            // 2. ATTACH THE COOKIE TO THE HEADERS
-            const verifyRes = await api.post('/users/otp-verify/', payload, {
-                headers: {
-                    'Cookie': sessionCookie // <--- Send it back to the server
-                }
-            });
-
-            console.log("[Verify] Response Status:", verifyRes.status);
-            console.log("[Verify] Response Headers:", verifyRes.headers);
-
-            // Check if verify response has a new cookie
             let newCookie = verifyRes.headers['set-cookie'];
             if (Array.isArray(newCookie)) {
                 newCookie = newCookie.join('; ');
             }
-            console.log("[Verify] New Cookie from verify response:", newCookie);
+            // If new cookie is received, update it
+            if (newCookie) {
+                const SecureStore = require('expo-secure-store');
+                await SecureStore.setItemAsync('session_cookie', newCookie);
+            }
 
-            // Use the cookie from verify response if available, otherwise use the one from login
-            const cookieToSave = newCookie || sessionCookie || params.cookie;
-            console.log("[Verify] Cookie to save:", cookieToSave);
+            // We pass null for cookie to login() because it should read from SecureStore or we updated it above
+            // Actually check AuthContext logic. If login logic needs the cookie string, we pass newCookie.
+            // But let's assume AuthContext might re-read or we pass it just in case.
+            const finalCookie = newCookie || null;
 
             await login(
-                { id: ctx.id, status: ctx.status }, // User Data
-                cookieToSave // Cookie to save
+                { id: ctx.id, status: ctx.status },
+                finalCookie
             );
 
-            // Navigate
             if (ctx.status === 'New User') {
                 router.replace('/form');
             } else {
@@ -148,7 +128,6 @@ export default function VerifyScreen() {
         }
     };
 
-    // 2. Resend OTP Function
     const resendOtp = async () => {
         if (isResendDisabled) return;
         setError('');
@@ -156,14 +135,10 @@ export default function VerifyScreen() {
 
         try {
             const res = await api.post('/users/resend-otp/', { key: ctx.key, id: ctx.id });
-
-            // Update Context with new keys if backend rotates them
             if (res.data.key) setCtx(prev => ({ ...prev, key: res.data.key }));
             if (res.data.id) setCtx(prev => ({ ...prev, id: res.data.id }));
 
             Alert.alert("Sent!", "A new code has been sent to your email.");
-
-            // Reset Timer
             setIsResendDisabled(true);
             setTimer(120);
             setOtp(new Array(6).fill(''));
@@ -176,131 +151,167 @@ export default function VerifyScreen() {
         }
     };
 
-    // Format Timer (MM:SS)
     const formatTime = (seconds) => {
         const m = Math.floor(seconds / 60);
         const s = seconds % 60;
         return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
 
-    // Get OTP input styling based on state
-    const getOtpInputStyle = (index, digit) => {
-        let baseStyle = 'w-12 h-14 rounded-2xl text-center text-2xl font-bold';
-
-        if (error) {
-            return `${baseStyle} border-2 border-red-500 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400`;
-        }
-
-        if (focusedIndex === index) {
-            return `${baseStyle} border-2 border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400`;
-        }
-
-        if (digit) {
-            return `${baseStyle} border-2 border-slate-800 dark:border-slate-300 bg-white dark:bg-slate-700 text-slate-800 dark:text-white`;
-        }
-
-        return `${baseStyle} border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500`;
-    };
-
     return (
         <LinearGradient
-            colors={isDark ? ['#0f172a', '#1e293b'] : ['#f8fafc', '#e2e8f0']}
-            className="flex-1"
+            colors={['#f8fafc', '#e2e8f0', '#cbd5e1']}
+            style={{ flex: 1 }}
         >
-            <SafeAreaView className="flex-1">
-                <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+            <SafeAreaView style={{ flex: 1 }}>
+                <StatusBar barStyle="dark-content" />
                 <KeyboardAvoidingView
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    className="flex-1 px-6"
+                    style={{ flex: 1, paddingHorizontal: 24 }}
                 >
                     {/* Back Button */}
                     <TouchableOpacity
                         onPress={() => router.back()}
-                        className="mt-4 mb-8 bg-white/80 dark:bg-slate-700/80 w-10 h-10 rounded-full items-center justify-center shadow-sm"
+                        style={{
+                            marginTop: 16,
+                            marginBottom: 32,
+                            backgroundColor: 'rgba(255,255,255,0.8)',
+                            width: 40,
+                            height: 40,
+                            borderRadius: 20,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            elevation: 2
+                        }}
                     >
-                        <ArrowLeft color={isDark ? "#e2e8f0" : "#334155"} size={22} />
+                        <ArrowLeft color="#334155" size={22} />
                     </TouchableOpacity>
 
                     {/* Language Switcher */}
-                    <View className="absolute top-4 right-0 z-50">
+                    <View style={{ position: 'absolute', top: 16, right: 24, zIndex: 50 }}>
                         <TouchableOpacity
                             onPress={() => setShowLanguageModal(true)}
-                            className="bg-white/80 dark:bg-slate-700/80 p-2.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-600"
+                            style={{
+                                backgroundColor: 'rgba(255,255,255,0.8)',
+                                padding: 10,
+                                borderRadius: 9999,
+                                borderWidth: 1,
+                                borderColor: '#e2e8f0',
+                                elevation: 5
+                            }}
                         >
-                            <Globe size={22} color={isDark ? "#94a3b8" : "#475569"} />
+                            <Globe size={22} color="#475569" />
                         </TouchableOpacity>
                     </View>
 
                     <ScrollView showsVerticalScrollIndicator={false}>
                         {/* Header */}
-                        <View className="items-center mb-10">
-                            {/* Icon Badge */}
-                            <View className="bg-blue-100 dark:bg-blue-900/30 w-20 h-20 rounded-full items-center justify-center mb-5">
-                                <Text className="text-4xl">📧</Text>
+                        <View style={{ alignItems: 'center', marginBottom: 40 }}>
+                            <View style={{
+                                backgroundColor: '#e0f2fe',
+                                width: 80,
+                                height: 80,
+                                borderRadius: 40,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                marginBottom: 20
+                            }}>
+                                <Text style={{ fontSize: 36 }}>📧</Text>
                             </View>
 
-                            <Text className="text-3xl font-extrabold text-slate-800 dark:text-white text-center mb-2">
+                            <Text style={{ fontSize: 28, fontWeight: '800', color: '#1e293b', marginBottom: 8, textAlign: 'center' }}>
                                 {t('verify.Verification')}
                             </Text>
-                            <Text className="text-slate-500 dark:text-slate-400 text-center text-base px-8">
+                            <Text style={{ color: '#64748b', textAlign: 'center', fontSize: 16, paddingHorizontal: 32 }}>
                                 {t('verify.WeveSent')}
                             </Text>
                             {ctx.email && (
-                                <View className="bg-blue-100 dark:bg-blue-900/30 px-5 py-2 rounded-full mt-4 border border-blue-200 dark:border-blue-800">
-                                    <Text className="text-blue-800 dark:text-blue-300 font-semibold">{ctx.email}</Text>
+                                <View style={{
+                                    backgroundColor: '#e0f2fe',
+                                    paddingHorizontal: 20,
+                                    paddingVertical: 8,
+                                    borderRadius: 9999,
+                                    marginTop: 16,
+                                    borderWidth: 1,
+                                    borderColor: '#bae6fd'
+                                }}>
+                                    <Text style={{ color: '#0369a1', fontWeight: '600' }}>{ctx.email}</Text>
                                 </View>
                             )}
                         </View>
 
                         {/* OTP Input Container */}
-                        <View className="flex-row justify-between mb-8 px-2">
-                            {otp.map((digit, index) => (
-                                <TextInput
-                                    key={index}
-                                    ref={(ref) => inputRefs.current[index] = ref}
-                                    value={digit}
-                                    onChangeText={(text) => handleChange(text, index)}
-                                    onKeyPress={(e) => handleKeyPress(e, index)}
-                                    onFocus={() => setFocusedIndex(index)}
-                                    onBlur={() => setFocusedIndex(-1)}
-                                    keyboardType="number-pad"
-                                    maxLength={1}
-                                    selectTextOnFocus
-                                    className={getOtpInputStyle(index, digit)}
-                                    style={{
-                                        shadowColor: focusedIndex === index ? '#3b82f6' : 'transparent',
-                                        shadowOffset: { width: 0, height: 2 },
-                                        shadowOpacity: 0.25,
-                                        shadowRadius: 4,
-                                        elevation: focusedIndex === index ? 4 : 0
-                                    }}
-                                />
-                            ))}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32, paddingHorizontal: 8 }}>
+                            {otp.map((digit, index) => {
+                                const isFocused = focusedIndex === index;
+                                let borderColor = '#cbd5e1';
+                                if (error) borderColor = '#ef4444';
+                                else if (isFocused) borderColor = '#3b82f6';
+                                else if (digit) borderColor = '#1e293b';
+
+                                return (
+                                    <TextInput
+                                        key={index}
+                                        ref={(ref) => inputRefs.current[index] = ref}
+                                        value={digit}
+                                        onChangeText={(text) => handleChange(text, index)}
+                                        onKeyPress={(e) => handleKeyPress(e, index)}
+                                        onFocus={() => setFocusedIndex(index)}
+                                        onBlur={() => setFocusedIndex(-1)}
+                                        keyboardType="number-pad"
+                                        maxLength={1}
+                                        selectTextOnFocus
+                                        style={{
+                                            width: 45,
+                                            height: 56,
+                                            borderRadius: 12,
+                                            textAlign: 'center',
+                                            fontSize: 24,
+                                            fontWeight: 'bold',
+                                            borderWidth: 2,
+                                            borderColor: borderColor,
+                                            backgroundColor: error ? '#fef2f2' : (isFocused ? '#eff6ff' : 'white'),
+                                            color: error ? '#dc2626' : (isFocused ? '#2563eb' : '#1e293b'),
+                                            elevation: isFocused ? 4 : 0,
+                                            shadowColor: isFocused ? '#3b82f6' : 'transparent',
+                                            shadowOffset: { width: 0, height: 2 },
+                                            shadowOpacity: 0.25,
+                                            shadowRadius: 4
+                                        }}
+                                    />
+                                )
+                            })}
                         </View>
 
                         {/* Error Message */}
                         {error ? (
-                            <View className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-4 mb-5 rounded-r-xl mx-2">
-                                <Text className="text-red-600 dark:text-red-400 font-medium text-center">
+                            <View style={{ backgroundColor: '#fef2f2', borderLeftWidth: 4, borderLeftColor: '#ef4444', padding: 16, marginBottom: 20, borderRadius: 8 }}>
+                                <Text style={{ color: '#dc2626', fontWeight: '500', textAlign: 'center' }}>
                                     {error}
                                 </Text>
                             </View>
                         ) : null}
 
                         {/* Timer & Resend */}
-                        <View className="items-center mb-8">
+                        <View style={{ alignItems: 'center', marginBottom: 32 }}>
                             {isResendDisabled ? (
-                                <View className="bg-slate-100 dark:bg-slate-800 px-5 py-3 rounded-full">
-                                    <Text className="text-slate-500 dark:text-slate-400">
-                                        {t('verify.Resend code in')} <Text className="font-bold text-slate-700 dark:text-slate-200">{formatTime(timer)}</Text>
+                                <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 9999 }}>
+                                    <Text style={{ color: '#64748b' }}>
+                                        {t('verify.Resend code in')} <Text style={{ fontWeight: 'bold', color: '#334155' }}>{formatTime(timer)}</Text>
                                     </Text>
                                 </View>
                             ) : (
                                 <TouchableOpacity
                                     onPress={resendOtp}
-                                    className="bg-blue-50 dark:bg-blue-900/30 px-6 py-3 rounded-full border border-blue-200 dark:border-blue-700"
+                                    style={{
+                                        backgroundColor: '#eff6ff',
+                                        paddingHorizontal: 24,
+                                        paddingVertical: 12,
+                                        borderRadius: 9999,
+                                        borderWidth: 1,
+                                        borderColor: '#bfdbfe'
+                                    }}
                                 >
-                                    <Text className="text-blue-600 dark:text-blue-400 font-bold text-lg">{t('verify.Resend code')}</Text>
+                                    <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 16 }}>{t('verify.Resend code')}</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -309,29 +320,29 @@ export default function VerifyScreen() {
                         <TouchableOpacity
                             onPress={verifyOtp}
                             disabled={loading || otp.join('').length !== 6}
-                            className={`w-full py-4 rounded-2xl items-center mx-2 ${loading || otp.join('').length !== 6
-                                    ? 'bg-slate-300 dark:bg-slate-600'
-                                    : 'bg-blue-600 dark:bg-blue-500 shadow-lg'
-                                }`}
                             style={{
-                                width: '95%',
+                                width: '100%',
+                                paddingVertical: 16,
+                                borderRadius: 16,
+                                alignItems: 'center',
+                                backgroundColor: (loading || otp.join('').length !== 6) ? '#cbd5e1' : '#2563eb',
+                                elevation: (loading || otp.join('').length !== 6) ? 0 : 6,
                                 shadowColor: '#3b82f6',
                                 shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: loading ? 0 : 0.3,
-                                shadowRadius: 8,
-                                elevation: loading ? 0 : 6
+                                shadowOpacity: 0.3,
+                                shadowRadius: 8
                             }}
                         >
                             {loading ? (
                                 <ActivityIndicator color="white" />
                             ) : (
-                                <Text className="text-white font-bold text-lg">{t('verify.Verify & Proceed')}</Text>
+                                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>{t('verify.Verify & Proceed')}</Text>
                             )}
                         </TouchableOpacity>
 
                         {/* Security Note */}
-                        <View className="mt-8 items-center px-4">
-                            <Text className="text-slate-400 dark:text-slate-500 text-xs text-center">
+                        <View style={{ marginTop: 32, marginBottom: 20, alignItems: 'center' }}>
+                            <Text style={{ color: '#94a3b8', fontSize: 12 }}>
                                 🔒 Your verification is secure and encrypted
                             </Text>
                         </View>
