@@ -36,7 +36,14 @@ export default function TabLayout() {
             screenOptions={{
                 headerShown: false,
                 tabBarShowLabel: true,
-                tabBarStyle: [styles.tabBar, { bottom: 5 + insets.bottom, height: 75 + insets.bottom }],
+                tabBarStyle: [
+                    styles.tabBar,
+                    {
+                        bottom: insets.bottom + 15,
+                        height: 80,
+                        paddingBottom: 10,
+                    }
+                ],
                 tabBarLabelStyle: styles.label,
                 tabBarActiveTintColor: colors.active,
                 tabBarInactiveTintColor: colors.inactive,

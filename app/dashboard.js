@@ -2,7 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { Bell, Globe, HelpCircle, History, MapPin, Navigation, User, Wrench } from 'lucide-react-native';
+import { Bell, Globe, HelpCircle, History, MapPin, Navigation, User, Wrench, X } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -112,8 +112,26 @@ export default function Dashboard() {
     const mapRef = useRef(null);
     const { user, profile, loading: authLoading } = useAuth();
     const { t } = useTranslation();
-    const { isOnline, setIsOnline, connectionStatus, job, acceptJob, rejectJob, mechanicCoords, reconnect } = useWebSocket();
+    const { isOnline, setIsOnline, connectionStatus, job, pendingJobs, acceptJob, rejectJob, mechanicCoords, reconnect, stopRing } = useWebSocket();
     const [showLanguageModal, setShowLanguageModal] = useState(false);
+    const [viewingJobId, setViewingJobId] = useState(null);
+    const prevPendingLength = useRef(0);
+
+    // Auto-open logic for new jobs
+    useEffect(() => {
+        const currentLength = pendingJobs.length;
+        // If we went from 0 to some jobs, auto-view the first one
+        if (prevPendingLength.current === 0 && currentLength > 0) {
+            setViewingJobId(pendingJobs[0].id);
+        }
+        // If the currently viewed job is removed, close the viewer
+        if (viewingJobId && !pendingJobs.find(j => j.id === viewingJobId)) {
+            setViewingJobId(null);
+            // If there are still jobs left, maybe auto-view the next one? 
+            // Or let user pick from list. Let's let user pick (List view).
+        }
+        prevPendingLength.current = currentLength;
+    }, [pendingJobs]);
 
     // Dark mode detection
     const { colorScheme } = useColorScheme();
@@ -358,37 +376,7 @@ export default function Dashboard() {
                     </TouchableOpacity>
                 </View>
 
-                {/* --- PENDING JOB CARD (Fallback) --- */}
-                {job && job.status === "PENDING" && (
-                    <View className="bg-red-50 dark:bg-red-900/20 rounded-2xl p-4 border border-red-200 dark:border-red-900 mb-6 relative overflow-hidden">
-                        {/* Pulse Dot Animation would go here if we had more setup, simple dot for now */}
-                        <View className="flex-row items-center mb-3">
-                            <View className="w-2.5 h-2.5 rounded-full bg-red-500 mr-2 animate-pulse" />
-                            <Text className="text-red-700 dark:text-red-400 font-bold text-sm uppercase">New Request Incoming</Text>
-                        </View>
 
-                        <Text className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-1">{job.vehicle_type || 'Vehicle'} • {job.problem}</Text>
-                        <View className="flex-row items-center mb-4">
-                            <MapPin size={14} color="#ef4444" className="mr-1" />
-                            <Text className="text-slate-500 dark:text-slate-400 text-xs">{job.address || "Location Shared"}</Text>
-                        </View>
-
-                        <View className="flex-row gap-3">
-                            <TouchableOpacity
-                                onPress={() => rejectJob()}
-                                className="flex-1 bg-white dark:bg-slate-800 py-3 rounded-xl border border-slate-200 dark:border-slate-700 items-center justify-center"
-                            >
-                                <Text className="text-slate-700 dark:text-slate-300 font-bold text-sm">REJECT</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => acceptJob(job.id)}
-                                className="flex-1 bg-red-600 py-3 rounded-xl items-center justify-center shadow-md shadow-red-200 dark:shadow-none"
-                            >
-                                <Text className="text-white font-bold text-sm">ACCEPT NOW</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                )}
 
                 {/* Earnings Card */}
                 <View className="bg-slate-50 dark:bg-slate-700 rounded-2xl p-5 border border-slate-100 dark:border-slate-600 flex-row divide-x divide-slate-200 dark:divide-slate-600 mb-6">
@@ -469,16 +457,73 @@ export default function Dashboard() {
                 <Navigation size={22} color={isDark ? "#60a5fa" : "#2563eb"} fill={isDark ? "#60a5fa" : "#2563eb"} />
             </TouchableOpacity>
 
-            {/* --- POPUP (Overlay) --- */}
-            {
-                job && job.status === "PENDING" && (
-                    <JobNotificationPopup
-                        job={job}
-                        onAccept={() => acceptJob(job.id)}
-                        onReject={rejectJob}
-                    />
-                )
-            }
+            {/* --- INCOMING JOBS LIST (Multiple or Minimized) --- */}
+            {pendingJobs && pendingJobs.length > 0 && !viewingJobId && (
+                <View className="absolute bottom-24 left-4 right-4 z-50 max-h-[300px]">
+                    <Text className="text-white bg-slate-800 self-start px-3 py-1 rounded-t-lg font-bold text-xs shadow-sm">
+                        Incoming Requests ({pendingJobs.length})
+                    </Text>
+                    <View className="bg-slate-50 dark:bg-slate-800 rounded-b-xl rounded-tr-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        {pendingJobs.map((pJob) => (
+                            <Pressable
+                                key={pJob.id}
+                                onPress={() => setViewingJobId(pJob.id)}
+                                className="p-4 border-b border-slate-200 dark:border-slate-700 flex-row justify-between items-center active:bg-slate-100 dark:active:bg-slate-700 bg-white dark:bg-slate-800"
+                            >
+                                <View className="flex-1 mr-4">
+                                    <View className="flex-row items-center mb-1">
+                                        <Text className="font-bold text-slate-800 dark:text-slate-100 text-sm flex-1" numberOfLines={1}>
+                                            {pJob.vehicle_type} • {pJob.problem}
+                                        </Text>
+                                    </View>
+                                    <Text className="text-xs text-slate-500 dark:text-slate-400" numberOfLines={1}>
+                                        {pJob.location || "Location Shared"}
+                                    </Text>
+                                </View>
+
+                                <View className="flex-row items-center gap-3">
+                                    <TouchableOpacity
+                                        onPress={() => rejectJob(pJob.id)}
+                                        className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-full"
+                                    >
+                                        <X size={16} color={isDark ? "#94a3b8" : "#64748b"} />
+                                    </TouchableOpacity>
+
+                                    <View className="bg-blue-100 dark:bg-blue-900/40 px-3 py-1.5 rounded-full">
+                                        <Text className="text-blue-700 dark:text-blue-300 text-[10px] font-bold">VIEW</Text>
+                                    </View>
+                                </View>
+                            </Pressable>
+                        ))}
+                    </View>
+                </View>
+            )}
+
+            {/* --- POPUP (Overlay - Single or Selected) --- */}
+            {(() => {
+                const jobToShow = viewingJobId ? pendingJobs.find(j => j.id === viewingJobId) : null;
+
+                if (jobToShow) {
+                    return (
+                        <JobNotificationPopup
+                            job={jobToShow}
+                            onAccept={() => {
+                                acceptJob(jobToShow.id);
+                                setViewingJobId(null);
+                            }}
+                            onReject={() => {
+                                rejectJob(jobToShow.id);
+                                setViewingJobId(null);
+                            }}
+                            onMinimize={() => {
+                                stopRing();
+                                setViewingJobId(null);
+                            }}
+                        />
+                    );
+                }
+                return null;
+            })()}
 
             <LanguageModal
                 visible={showLanguageModal}

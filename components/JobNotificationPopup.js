@@ -122,12 +122,13 @@ const CountdownTimer = ({ seconds, onExpire, t, isDark }) => {
 };
 
 // --- Main Component ---
-export default function JobNotificationPopup({ job, onAccept, onReject }) {
+export default function JobNotificationPopup({ job, onAccept, onReject, onMinimize }) {
     const { t } = useTranslation();
     const { colorScheme } = useColorScheme();
     const isDark = colorScheme === 'dark';
 
     if (!job) return null;
+    console.log("JobNotificationPopup :", job);
 
     // Dynamic colors for dark mode
     const colors = {
@@ -151,10 +152,16 @@ export default function JobNotificationPopup({ job, onAccept, onReject }) {
     };
 
     return (
-        <View style={styles.overlay}>
+        <View style={styles.overlay} className="mb-6 pb-12">
+            {/* Reject Button (Floating Top Right) */}
             <TouchableOpacity onPress={onReject} style={styles.rejectBtn}>
                 <X size={20} color="white" />
                 <Text style={styles.rejectText}>{t('jobPopup.reject')}</Text>
+            </TouchableOpacity>
+
+            {/* Minimize Button (Floating Top Left) - NEW */}
+            <TouchableOpacity onPress={onMinimize} style={styles.minimizeBtn}>
+                <X size={24} color="white" />
             </TouchableOpacity>
 
             <View style={[styles.card, { backgroundColor: colors.card }]}>
@@ -165,7 +172,7 @@ export default function JobNotificationPopup({ job, onAccept, onReject }) {
                             <Text style={styles.headerTitle}>{t('jobPopup.newRequest')}</Text>
                             <View style={styles.headerSubtitleRow}>
                                 <Clock size={12} color="#bfdbfe" />
-                                <Text style={styles.headerSubtitle}> {t('jobPopup.justNow')}</Text>
+                                <Text style={styles.headerSubtitle}> {t('jobPopup.justNow')}</Text> <Text style={styles.headerSubtitle} className="ml-2"> {job.id}</Text>
                             </View>
                         </View>
                     </View>
@@ -201,7 +208,7 @@ export default function JobNotificationPopup({ job, onAccept, onReject }) {
                 <View style={[styles.footer, { backgroundColor: colors.footer }]}>
                     <SwipeButton onToggle={onAccept} t={t} isDark={isDark} />
                     <View style={[styles.timerContainer, { backgroundColor: colors.timerBg, borderColor: colors.timerBorder }]}>
-                        <CountdownTimer seconds={30} onExpire={onReject} t={t} isDark={isDark} />
+                        <CountdownTimer seconds={120} onExpire={onReject} t={t} isDark={isDark} />
                     </View>
                 </View>
             </View>
@@ -210,8 +217,9 @@ export default function JobNotificationPopup({ job, onAccept, onReject }) {
 }
 
 const styles = StyleSheet.create({
-    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 2000, justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 40 },
+    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 100000, justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 40 },
     rejectBtn: { position: 'absolute', top: 60, right: 20, backgroundColor: '#4b5563', flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 30, zIndex: 2001 },
+    minimizeBtn: { position: 'absolute', top: 60, left: 20, backgroundColor: 'rgba(255, 255, 255, 0.2)', width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', zIndex: 2001 },
     rejectText: { color: 'white', fontWeight: 'bold', marginLeft: 8 },
     card: { width: width - 32, backgroundColor: 'white', borderRadius: 24, overflow: 'hidden', elevation: 10 },
     header: { backgroundColor: '#2563eb', padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

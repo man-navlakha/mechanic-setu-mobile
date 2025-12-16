@@ -31,6 +31,7 @@ export const WebSocketProvider = ({ children }) => {
     const [isOnline, setIsOnlineState] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState('disconnected'); // 'connecting' | 'connected' | 'disconnected'
     const [job, setJob] = useState(null);
+    const [pendingJobs, setPendingJobs] = useState([]);
     const jobRef = useRef(null);
     const [mechanicCoords, setMechanicCoords] = useState(null);
     const intendedOnlineState = useRef(false);
@@ -48,6 +49,7 @@ export const WebSocketProvider = ({ children }) => {
             // Clean up if user logs out
             disconnectWebSocket();
             setJob(null);
+            setPendingJobs([]);
             setIsOnlineState(false);
             return;
         }
@@ -100,7 +102,7 @@ export const WebSocketProvider = ({ children }) => {
         });
 
         await notifee.displayNotification({
-            id: 'job_alert',
+            id: `job_alert_${newJob.id}`,
             title: '⚠️ NEW MECHANIC REQUEST',
             body: `${newJob.vehicle_type || 'Vehicle'} - ${newJob.problem}`,
             data: { jobId: newJob.id },
@@ -174,17 +176,26 @@ export const WebSocketProvider = ({ children }) => {
             return;
         }
 
-        stopRing();
-        await notifee.cancelNotification('job_alert');
+        if (jobId) {
+            await notifee.cancelNotification(`job_alert_${jobId}`);
+        }
+
+        // If no more pending jobs, stop ring
+        // But we need strict checking here. For now, simplistic approach:
+        // Accept/Reject will handle state, and effect can handle sound?
+        // Let's just call the functions.
 
         if (actionId === 'accept' && jobId) acceptJob(jobId);
-        else if (actionId === 'reject') rejectJob();
+        else if (actionId === 'reject' && jobId) rejectJob(jobId);
     };
 
     // --- 3. SOUND CONTROL ---
     const startRing = async () => {
         try {
-            if (soundRef.current) await stopRing();
+            if (soundRef.current) {
+                // Already playing
+                return;
+            }
             // Ensure the sound file exists in assets/sounds/alert.mp3
             const { sound } = await Audio.Sound.createAsync(
                 require('../assets/sounds/alert.mp3'),
@@ -193,20 +204,27 @@ export const WebSocketProvider = ({ children }) => {
             soundRef.current = sound;
             await sound.playAsync();
         } catch (error) {
-            console.log("[Audio] Error:", error.message);
+            console.log("[Audio] Start Error:", error.message);
         }
     };
 
     const stopRing = async () => {
         try {
             if (soundRef.current) {
-                await soundRef.current.stopAsync();
-                await soundRef.current.unloadAsync();
+                const status = await soundRef.current.getStatusAsync();
+                if (status.isLoaded) {
+                    await soundRef.current.stopAsync();
+                    await soundRef.current.unloadAsync();
+                }
                 soundRef.current = null;
             }
-            if (notifee) await notifee.cancelNotification('job_alert');
+            // Only cancel if no more jobs? 
+            // For now, cancel all job alerts if we stop ring? No, notification might persist.
+            // But usually sound is tied to "unattended" request.
         } catch (error) {
             console.log("[Audio] Stop Error:", error.message);
+            // Force cleanup if error
+            soundRef.current = null;
         }
     };
 
@@ -221,8 +239,12 @@ export const WebSocketProvider = ({ children }) => {
             intendedOnlineState.current = serverIsOnline;
 
             const syncRes = await api.get("/jobs/SyncActiveJob/");
-            if (syncRes.data && syncRes.data.id) {
-                setJob(syncRes.data);
+            if (syncRes.data && syncRes.data.id && syncRes.data.status) {
+                if (syncRes.data.status === 'PENDING') {
+                    setPendingJobs([syncRes.data]);
+                } else {
+                    setJob(syncRes.data);
+                }
                 setIsOnlineState(true);
             }
 
@@ -245,15 +267,15 @@ export const WebSocketProvider = ({ children }) => {
         if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) return;
 
         try {
+            setConnectionStatus('connecting');
             const res = await api.get("core/ws-token/");
             const wsToken = res?.data?.ws_token;
-            if (!wsToken) return;
+            if (!wsToken) throw new Error("No WS Token received");
 
             const HOST = 'mechanic-setu.onrender.com';
             const wsUrl = `wss://${HOST}/ws/job_notifications/?token=${wsToken}`;
 
             console.log("[WS] Connecting:", wsUrl);
-            setConnectionStatus('connecting');
             const ws = new WebSocket(wsUrl);
             socketRef.current = ws;
 
@@ -284,13 +306,18 @@ export const WebSocketProvider = ({ children }) => {
                 }
             };
 
-            ws.onerror = () => {
-                console.log("[WS] Error");
+            ws.onerror = (e) => {
+                console.log("[WS] Error", e.message);
                 setConnectionStatus('disconnected');
             };
 
         } catch (err) {
             console.error("[WS] Connect error:", err);
+            setConnectionStatus('disconnected');
+            // Retry if initial connection failed (e.g. API error)
+            if (intendedOnlineState.current) {
+                setTimeout(connectWebSocket, 5000);
+            }
         }
     };
 
@@ -305,12 +332,16 @@ export const WebSocketProvider = ({ children }) => {
     const handleMessage = async (data) => {
         switch (data.type) {
             case "new_job":
-                if (jobRef.current?.id === data.service_request.id) {
-                    console.log(`[WS] Duplicate Job Alert ignored: ${data.service_request.id}`);
-                    return;
-                }
                 console.log("[WS] New Job:", data.service_request.id);
-                setJob(data.service_request);
+
+                setPendingJobs(prev => {
+                    // Deduplicate
+                    if (prev.some(j => j.id === data.service_request.id)) {
+                        console.log(`[WS] Duplicate Job Alert ignored: ${data.service_request.id}`);
+                        return prev;
+                    }
+                    return [...prev, data.service_request];
+                });
 
                 startRing(); // Play Sound
 
@@ -321,36 +352,56 @@ export const WebSocketProvider = ({ children }) => {
                 break;
 
             case "job_status_update":
+                // If it's the active job
                 if (jobRef.current?.id == data.job_id) {
                     if (["COMPLETED", "CANCELLED", "EXPIRED"].includes(data.status)) {
                         setJob(null);
-                        stopRing();
                         updateStatus("ONLINE");
                         router.replace('/dashboard');
                     } else {
                         setJob(prev => ({ ...prev, status: data.status }));
                     }
                 }
+                // Check if it's in pending jobs (e.g. expired/cancelled before accept)
+                setPendingJobs(prev => {
+                    const exists = prev.find(j => j.id == data.job_id);
+                    if (exists) {
+                        // Remove it
+                        const filtered = prev.filter(j => j.id != data.job_id);
+                        if (filtered.length === 0) stopRing();
+                        return filtered;
+                    }
+                    return prev;
+                });
                 break;
         }
     };
 
     // --- 6. ACTIONS ---
     const acceptJob = async (jobId) => {
-        stopRing(); // Stop sound immediately
+        // Stop sound if it's the last one, or just stop it regardless?
+        // User might want to keep others pending.
+        // But accepting one usually means you are busy.
+        // Let's stop ring for now.
+        stopRing();
 
         try {
             console.log(`[JOB] Accepting Job ID: ${jobId}`);
             const res = await api.post(`/jobs/AcceptServiceRequest/${jobId}/`);
 
             let acceptedJob = res.data.job;
+            // Fallback if backend doesn't return full job
             if (!acceptedJob) {
-                if (jobRef.current && String(jobRef.current.id) === String(jobId)) {
-                    acceptedJob = { ...jobRef.current, status: 'WORKING' };
+                const fromQueue = pendingJobs.find(j => j.id === jobId);
+                if (fromQueue) {
+                    acceptedJob = { ...fromQueue, status: 'WORKING' };
                 } else {
                     acceptedJob = { id: jobId, status: 'WORKING' };
                 }
             }
+
+            // Remove from pending
+            setPendingJobs(prev => prev.filter(j => j.id !== jobId));
 
             setJob(acceptedJob);
             await updateStatus("WORKING");
@@ -365,9 +416,14 @@ export const WebSocketProvider = ({ children }) => {
         }
     };
 
-    const rejectJob = () => {
-        stopRing();
-        setJob(null);
+    const rejectJob = (jobId) => {
+        console.log(`[JOB] Rejecting Job ID: ${jobId}`);
+        setPendingJobs(prev => {
+            const next = prev.filter(j => j.id !== jobId);
+            if (next.length === 0) stopRing();
+            return next;
+        });
+        if (notifee) notifee.cancelNotification(`job_alert_${jobId}`);
     };
 
     // Location logic (same as before)
@@ -414,6 +470,7 @@ export const WebSocketProvider = ({ children }) => {
             disconnectWebSocket();
             cancelDisconnectedNotification(); // Cancel notification when going offline
             stopRing();
+            setPendingJobs([]);
         }
     };
 
@@ -449,8 +506,8 @@ export const WebSocketProvider = ({ children }) => {
     };
 
     const value = React.useMemo(() => ({
-        isOnline, setIsOnline, connectionStatus, job, mechanicCoords, acceptJob, rejectJob, completeJob, cancelJob, reconnect
-    }), [isOnline, connectionStatus, job, mechanicCoords]);
+        isOnline, setIsOnline, connectionStatus, job, pendingJobs, mechanicCoords, acceptJob, rejectJob, completeJob, cancelJob, reconnect, stopRing
+    }), [isOnline, connectionStatus, job, pendingJobs, mechanicCoords]);
 
     return (
         <WebSocketContext.Provider value={value}>
