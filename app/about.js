@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Code, User, Users } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
+import { useTranslation } from 'react-i18next';
 import {
     Image,
     Linking,
@@ -15,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function AboutScreen() {
     const router = useRouter();
     const { colorScheme } = useColorScheme();
+    const { t } = useTranslation();
     const isDark = colorScheme === 'dark';
 
     const TeamMember = ({ name, role, color }) => (
@@ -40,7 +42,7 @@ export default function AboutScreen() {
                 <TouchableOpacity onPress={() => router.back()} className="mr-4">
                     <ArrowLeft size={24} color={isDark ? "#f8fafc" : "#0f172a"} />
                 </TouchableOpacity>
-                <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">About Us</Text>
+                <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">{t('about.title')}</Text>
             </View>
 
             <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
@@ -52,42 +54,42 @@ export default function AboutScreen() {
                         resizeMode="contain"
                     />
                     <Text className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2 text-center">
-                        Mechanic Setu
+                        {t('about.appName')}
                     </Text>
                     <Text className="text-slate-500 dark:text-slate-400 text-center leading-6 px-4">
-                        Bridging the gap between vehicle owners and skilled mechanics. Providing reliable, on-demand roadside assistance wherever you are.
+                        {t('about.description')}
                     </Text>
                 </View>
 
                 {/* Team Section */}
                 <Text className="text-slate-900 dark:text-slate-100 font-bold text-lg mb-4 flex-row items-center">
                     <Users size={20} className="mr-2" color={isDark ? "#f8fafc" : "#0f172a"} />
-                    <Text> Meet the Team</Text>
+                    <Text>{t('about.meetTeam')}</Text>
                 </Text>
 
                 <View className="flex-row justify-between mb-8">
-                    <TeamMember name="Man" role="Frontend Developer" color="blue" />
-                    <TeamMember name="Dhruv" role="Backend Developer" color="purple" />
+                    <TeamMember name="Man" role={t('about.frontendDeveloper')} color="blue" />
+                    <TeamMember name="Dhruv" role={t('about.backendDeveloper')} color="purple" />
                 </View>
 
                 {/* Additional Info / Links */}
                 <View className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700 space-y-4">
                     <TouchableOpacity onPress={() => Linking.openURL('https://mechanicsetu.com')}>
-                        <Text className="text-slate-900 dark:text-slate-100 font-semibold">Website</Text>
+                        <Text className="text-slate-900 dark:text-slate-100 font-semibold">{t('about.website')}</Text>
                         <Text className="text-slate-500 text-xs">www.mechanicsetu.com</Text>
                     </TouchableOpacity>
 
                     <View className="h-px bg-slate-100 dark:bg-slate-700" />
 
                     <TouchableOpacity onPress={() => Linking.openURL('mailto:support@mechanicsetu.com')}>
-                        <Text className="text-slate-900 dark:text-slate-100 font-semibold">Contact Support</Text>
+                        <Text className="text-slate-900 dark:text-slate-100 font-semibold">{t('about.contactSupport')}</Text>
                         <Text className="text-slate-500 text-xs">support@mechanicsetu.com</Text>
                     </TouchableOpacity>
                 </View>
 
                 <View className="items-center mt-10 mb-6">
                     <Text className="text-slate-400 text-xs">
-                        © 2025 Mechanic Setu. All rights reserved.
+                        {t('about.copyright')}
                     </Text>
                 </View>
             </ScrollView>

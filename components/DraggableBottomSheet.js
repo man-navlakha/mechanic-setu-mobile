@@ -1,17 +1,11 @@
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useColorScheme } from 'nativewind';
 import { forwardRef, useMemo } from 'react';
-import { Dimensions, StyleSheet } from 'react-native';
-
-// IMPORTANT: This component must be wrapped in <GestureHandlerRootView> at the root (done in _layout.tsx)
-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const DraggableBottomSheet = forwardRef(({
     children,
-    snapPoints = ['15%', '45%', '90%'], // Default snap points
+    snapPoints = ['15%', '45%', '90%'],
     initialIndex = 0,
 }, ref) => {
     const { colorScheme } = useColorScheme();
@@ -20,22 +14,22 @@ const DraggableBottomSheet = forwardRef(({
 
     // Styles dynamically based on theme
     const backgroundStyle = useMemo(() => ({
-        backgroundColor: isDark ? '#0f172a' : 'rgba(255, 255, 255, 0.95)',
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
+        backgroundColor: isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.98)', // Slightly more opaque
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
         borderWidth: 1,
-        borderColor: isDark ? 'rgba(51, 65, 85, 0.6)' : 'white',
+        borderColor: isDark ? '#334155' : '#e2e8f0',
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: -5 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        elevation: 20,
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 10,
     }), [isDark]);
 
     const handleIndicatorStyle = useMemo(() => ({
         backgroundColor: isDark ? '#475569' : '#cbd5e1',
-        width: 50,
-        height: 6,
+        width: 40,
+        height: 5,
     }), [isDark]);
 
     return (
@@ -49,20 +43,17 @@ const DraggableBottomSheet = forwardRef(({
             android_keyboardInputMode="adjustResize"
         >
             <BottomSheetScrollView
-                contentContainerStyle={[styles.contentContainer, { paddingBottom: 120 + insets.bottom }]}
+                contentContainerStyle={{
+                    paddingHorizontal: 16,
+                    // 60 (TabBar) + Insets + 20 (Buffer)
+                    paddingBottom: 80 + insets.bottom
+                }}
                 showsVerticalScrollIndicator={false}
             >
                 {children}
             </BottomSheetScrollView>
         </BottomSheet>
     );
-});
-
-const styles = StyleSheet.create({
-    contentContainer: {
-        paddingHorizontal: 20,
-        // paddingBottom is handled dynamically
-    },
 });
 
 export default DraggableBottomSheet;

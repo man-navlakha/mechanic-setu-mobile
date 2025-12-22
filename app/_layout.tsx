@@ -17,24 +17,21 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
 }
 
-function useNavigationGuard() {
+function NavigationGuard() {
   const { user, profile, loading } = useAuth() as AuthContextType;
   const segments = useSegments();
   const router = useRouter();
   const navigationState = useRootNavigationState();
 
-
   useEffect(() => {
+    // Wait for auth to be determined AND for navigation state to be initialized
     if (loading || !navigationState?.key) return;
 
     const currentRoute = segments[0] as string | undefined;
 
     // --- CASE 1: NOT LOGGED IN ---
     if (!user) {
-      if (currentRoute !== 'index' && currentRoute !== 'login' && currentRoute !== 'verify') {
-        router.replace('/login');
-      }
-      if ((currentRoute === 'index' || currentRoute === undefined) && !loading) {
+      if (currentRoute !== 'login' && currentRoute !== 'verify' && currentRoute !== 'index') {
         router.replace('/login');
       }
       return;
@@ -50,23 +47,24 @@ function useNavigationGuard() {
       }
 
       if (profile.is_verified) {
-        if (currentRoute === undefined || currentRoute === 'index' || currentRoute === 'login' || currentRoute === 'verify' || currentRoute === 'unverified' || currentRoute === 'form') {
+        // Redirect to tabs if on public pages
+        if (currentRoute === 'login' || currentRoute === 'verify' || currentRoute === 'unverified' || currentRoute === 'form') {
           router.replace('/(tabs)');
         }
       } else {
+        // Force unverified screen if profile exists but not verified
         if (currentRoute !== 'unverified') {
           router.replace('/unverified' as any);
         }
       }
     }
-  }, [user, profile, loading, segments]);
+  }, [user, profile, loading, segments, navigationState?.key]);
+
+  return null;
 }
 
 function RootLayoutContent() {
   const { loading } = useAuth() as AuthContextType;
-
-  // Use the navigation guard hook
-  useNavigationGuard();
 
   if (loading) {
     return (
@@ -79,9 +77,9 @@ function RootLayoutContent() {
   return (
     <WebSocketProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationGuard />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="index" />
           <Stack.Screen name="login" />
           <Stack.Screen name="verify" />
           <Stack.Screen name="form" />

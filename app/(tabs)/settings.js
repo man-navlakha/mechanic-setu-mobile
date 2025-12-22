@@ -54,30 +54,30 @@ export default function SettingsScreen() {
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
             <View className="px-4 py-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">Settings</Text>
+                <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">{t('settings.title')}</Text>
             </View>
 
             <View className="p-4 flex-1">
-                <Text className="text-slate-500 dark:text-slate-400 font-bold uppercase text-xs mb-3 ml-1">Preferences</Text>
+                <Text className="text-slate-500 dark:text-slate-400 font-bold uppercase text-xs mb-3 ml-1">{t('settings.preferences')}</Text>
 
                 <SettingItem
                     icon={<Globe size={24} color={isDark ? "#60a5fa" : "#2563eb"} />}
-                    title="Language"
-                    subtitle="Change app language"
+                    title={t('settings.language')}
+                    subtitle={t('settings.changeLanguage')}
                     onPress={() => setShowLanguageModal(true)}
                 />
 
                 <SettingItem
                     icon={<Info size={24} color={isDark ? "#34d399" : "#10b981"} />}
-                    title="About Us"
-                    subtitle="About Mechanic Setu"
+                    title={t('settings.aboutUs')}
+                    subtitle={t('settings.aboutDescription')}
                     onPress={() => router.push('/about')}
                 />
 
                 <SettingItem
                     icon={isDark ? <Moon size={24} color="#a78bfa" /> : <Sun size={24} color="#f59e0b" />}
-                    title="Dark Mode"
-                    subtitle={isDark ? "Dark mode is on" : "Light mode is on"}
+                    title={t('settings.darkMode')}
+                    subtitle={isDark ? t('settings.darkModeOn') : t('settings.lightModeOn')}
                     onPress={toggleColorScheme}
                     rightElement={
                         <Switch
@@ -89,7 +89,7 @@ export default function SettingsScreen() {
                     }
                 />
 
-                <Text className="text-slate-500 dark:text-slate-400 font-bold uppercase text-xs mb-3 ml-1 mt-6">Account</Text>
+                <Text className="text-slate-500 dark:text-slate-400 font-bold uppercase text-xs mb-3 ml-1 mt-6">{t('settings.account')}</Text>
 
                 <TouchableOpacity
                     onPress={handleLogout}
@@ -100,8 +100,8 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
 
                 <View className="mt-auto items-center pb-4" style={{ paddingBottom: 80 + insets.bottom }}>
-                    <Text className="text-slate-400 text-xs">Mechanic Setu Partner App</Text>
-                    <Text className="text-slate-400 text-xs">Version 1.0.0</Text>
+                    <Text className="text-slate-400 text-xs">{t('settings.appName')}</Text>
+                    <Text className="text-slate-400 text-xs">{t('settings.version')}</Text>
                 </View>
             </View>
 

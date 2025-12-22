@@ -20,7 +20,9 @@ import LanguageModal from '../components/LanguageModal';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../context/WebSocketContext';
 import api from '../utils/api';
-const TOGGLE_WIDTH = 100;
+
+const TOGGLE_WIDTH = 140; // Increased width for text
+
 // Modern Light Map Style
 const lightMapStyle = [
     { "elementType": "geometry", "stylers": [{ "color": "#f5f5f5" }] },
@@ -44,24 +46,26 @@ const darkMapStyle = [
     { "featureType": "transit", "elementType": "geometry", "stylers": [{ "color": "#334155" }] },
 ];
 
-// 1. Remove 'export default' so it's just a local component
+// Re-integrated OnlineToggle Component
 function OnlineToggle({ isOnline, setIsOnline }) {
+    const { t } = useTranslation();
+    // 0 = Offline (Left), 1 = Online (Right)
     const progress = useSharedValue(isOnline ? 1 : 0);
 
+    // Sync shared value when prop changes
+    useEffect(() => {
+        progress.value = withTiming(isOnline ? 1 : 0, { duration: 300 });
+    }, [isOnline]);
+
     const animatedStyle = useAnimatedStyle(() => ({
-        backgroundColor: progress.value
-            ? '#16a34a' // Swiggy/Ola Green
-            : '#64748b', // Neutral Grey
-        transform: [{ scale: withTiming(1, { duration: 150 }) }],
+        backgroundColor: progress.value === 1
+            ? '#16a34a' // Green
+            : '#64748b', // Grey
     }));
 
     const handleToggle = () => {
         const next = !isOnline;
         setIsOnline(next);
-
-        progress.value = withTiming(next ? 1 : 0, { duration: 300 });
-
-        // 🇮🇳 HAPTICS (very important)
         Haptics.impactAsync(
             next
                 ? Haptics.ImpactFeedbackStyle.Medium
@@ -75,7 +79,7 @@ function OnlineToggle({ isOnline, setIsOnline }) {
                 style={[
                     {
                         width: TOGGLE_WIDTH,
-                        paddingVertical: 6,
+                        paddingVertical: 8, // Slightly taller
                         paddingHorizontal: 6,
                         borderRadius: 999,
                         flexDirection: 'row',
@@ -101,12 +105,13 @@ function OnlineToggle({ isOnline, setIsOnline }) {
                     fontSize: 16,
                     marginLeft: 8
                 }}>
-                    {isOnline ? 'ONLINE' : 'OFFLINE'}
+                    {isOnline ? (t('dashboard.on') || 'ONLINE') : (t('dashboard.off') || 'OFFLINE')}
                 </Text>
             </Animated.View>
         </Pressable>
     );
 }
+
 export default function Dashboard() {
     const router = useRouter();
     const mapRef = useRef(null);
@@ -120,15 +125,11 @@ export default function Dashboard() {
     // Auto-open logic for new jobs
     useEffect(() => {
         const currentLength = pendingJobs.length;
-        // If we went from 0 to some jobs, auto-view the first one
         if (prevPendingLength.current === 0 && currentLength > 0) {
             setViewingJobId(pendingJobs[0].id);
         }
-        // If the currently viewed job is removed, close the viewer
         if (viewingJobId && !pendingJobs.find(j => j.id === viewingJobId)) {
             setViewingJobId(null);
-            // If there are still jobs left, maybe auto-view the next one? 
-            // Or let user pick from list. Let's let user pick (List view).
         }
         prevPendingLength.current = currentLength;
     }, [pendingJobs]);
@@ -167,8 +168,7 @@ export default function Dashboard() {
     // 2. LIVE UPDATES
     useEffect(() => {
         if (mechanicCoords && mapRef.current && isOnline) {
-            // Optional: Smoothly animate map to follow user
-            // mapRef.current.animateCamera({ center: mechanicCoords, pitch: 0, heading: 0 }, { duration: 1000 });
+            // Optional: mapRef.current.animateCamera({ center: mechanicCoords ... });
         }
     }, [mechanicCoords, isOnline]);
 
@@ -193,7 +193,7 @@ export default function Dashboard() {
             const history = res.data.job_history || [];
             const totalEarned = history.reduce((sum, j) => sum + (parseFloat(j.price) || 0), 0);
             setEarnings({ total: totalEarned, count: history.length });
-            const validPast = history.filter(j => j.latitude && j.longitude && j.status === 'ACCEPTED');
+            const validPast = history.filter(j => j.latitude && j.longitude && (j.status === 'ACCEPTED' || j.status === 'COMPLETED'));
             setPastJobs(validPast);
         } catch (e) { console.log(e); }
     };
@@ -254,25 +254,8 @@ export default function Dashboard() {
                 >
                     <View className="mx-4 flex-row justify-between items-center">
 
-                        {/* Left: On/Off Switch Pill */}
-                        <Pressable
-                            onPress={() => setIsOnline(!isOnline)}
-                            className={`flex-row items-center justify-center
-    w-full max-w-[140px] py-3 rounded-full shadow-lg
-    ${isOnline ? 'bg-green-600' : 'bg-slate-500'}
-  `}
-                        >
-                            <MaterialIcons
-                                name={isOnline ? 'check-circle' : 'cancel'}
-                                size={20}
-                                color="white"
-                            />
-                            <Text className="text-white font-bold text-base ml-2">
-                                {isOnline
-                                    ? t('dashboard.on') ?? 'ONLINE'
-                                    : t('dashboard.off') ?? 'OFFLINE'}
-                            </Text>
-                        </Pressable>
+                        {/* USE THE ANIMATED TOGGLE COMPONENT HERE */}
+                        <OnlineToggle isOnline={isOnline} setIsOnline={setIsOnline} />
 
                         {/* Right: Icon Buttons */}
                         <View className="flex-row items-center">
@@ -311,12 +294,17 @@ export default function Dashboard() {
                     </View>
 
                     {/* Active Job Floating Banner */}
+                    {/* FIX: SHOW FOR BOTH 'WORKING' AND 'ACCEPTED' */}
                     {
-                        job && job.status === "WORKING" && (
+                        job && (job.status === "WORKING" || job.status === "ACCEPTED") && (
                             <View className="mx-4 mt-3 bg-slate-900 dark:bg-slate-800 rounded-2xl p-4 shadow-xl flex-row justify-between items-center border border-slate-700">
                                 <View>
                                     <Text className="text-white font-bold text-base">{t('dashboard.activeJob')} #{job.id}</Text>
                                     <Text className="text-slate-300 text-xs mt-0.5">{job.vehical_type} • {job.problem}</Text>
+                                    <View className="flex-row items-center mt-1">
+                                        <View className={`w-2 h-2 rounded-full mr-1.5 ${job.status === 'WORKING' ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                                        <Text className="text-xs text-white font-bold">{job.status}</Text>
+                                    </View>
                                 </View>
                                 <TouchableOpacity
                                     onPress={() => router.push(`/job/${job.id}`)}
@@ -333,7 +321,7 @@ export default function Dashboard() {
                 {pendingJobs && pendingJobs.length > 0 && !viewingJobId && (
                     <View className="mx-4 mt-2 max-h-[400px]">
                         <Text className="text-white bg-slate-800 self-start px-3 py-1 rounded-t-lg font-bold text-xs shadow-sm shadow-black">
-                            {t('dashboard.incomingRequests') || 'Incoming Requests'} ({pendingJobs.length})
+                            {t('dashboard.incomingRequests')} ({pendingJobs.length})
                         </Text>
                         <View className="bg-slate-50 dark:bg-slate-800 rounded-b-xl rounded-tr-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                             {pendingJobs.map((pJob) => (
@@ -362,7 +350,7 @@ export default function Dashboard() {
                                         </TouchableOpacity>
 
                                         <View className="bg-blue-100 dark:bg-blue-900/40 px-3 py-1.5 rounded-full">
-                                            <Text className="text-blue-700 dark:text-blue-300 text-[10px] font-bold">VIEW</Text>
+                                            <Text className="text-blue-700 dark:text-blue-300 text-[10px] font-bold">{t('dashboard.view').toUpperCase()}</Text>
                                         </View>
                                     </View>
                                 </Pressable>
@@ -440,19 +428,14 @@ export default function Dashboard() {
                     </View>
                 </View>
 
-                {/* Recenter Button Moved Inline or Inside Sheet? Maybe keep outside or integrate. 
-                    Actually user asked for drawer. Floating buttons usually sit above drawer or inside. 
-                    I'll keep the Recent Jobs list inside.
-                */}
-
                 {/* Recent Jobs List */}
                 <Text className="text-slate-900 dark:text-slate-100 font-bold text-lg mb-3">
-                    {t('dashboard.recentJobs') || "Recent Activity"}
+                    {t('dashboard.recentJobs')}
                 </Text>
 
                 {pastJobs.length === 0 ? (
                     <View className="items-center py-4">
-                        <Text className="text-slate-400 dark:text-slate-500 font-medium text-sm">No recent jobs found.</Text>
+                        <Text className="text-slate-400 dark:text-slate-500 font-medium text-sm">{t('dashboard.noRecentJobs')}</Text>
                     </View>
                 ) : (
                     pastJobs.slice(0, 10).map((job, index) => (
@@ -486,14 +469,14 @@ export default function Dashboard() {
 
                             <View className="items-end">
                                 <Text className="font-black text-slate-900 dark:text-slate-100 text-lg">₹{job.price || 0}</Text>
-                                <Text className="text-blue-500 dark:text-blue-400 text-[10px] font-bold">VIEW</Text>
+                                <Text className="text-blue-500 dark:text-blue-400 text-[10px] font-bold">{t('dashboard.view').toUpperCase()}</Text>
                             </View>
                         </TouchableOpacity>
                     ))
                 )}
             </DraggableBottomSheet>
 
-            {/* Floating Recenter Button - Positioned above the Bottom Sheet's initial snap point */}
+            {/* Floating Recenter Button */}
             <TouchableOpacity
                 onPress={recenterMap}
                 className="absolute bottom-40 right-4 bg-white dark:bg-slate-800 p-3.5 rounded-full shadow-lg border border-slate-100 dark:border-slate-700 z-40"
@@ -501,7 +484,7 @@ export default function Dashboard() {
                 <Navigation size={22} color={isDark ? "#60a5fa" : "#2563eb"} fill={isDark ? "#60a5fa" : "#2563eb"} />
             </TouchableOpacity>
 
-            {/* Global Stop Ring Button (Visible when ringing) */}
+            {/* Global Stop Ring Button */}
             {isRinging && (
                 <TouchableOpacity
                     onPress={stopRing}
@@ -510,8 +493,6 @@ export default function Dashboard() {
                     <VolumeOff size={22} color="white" />
                 </TouchableOpacity>
             )}
-
-
 
             {/* --- POPUP (Overlay - Single or Selected) --- */}
             {(() => {
@@ -545,7 +526,5 @@ export default function Dashboard() {
                 onClose={() => setShowLanguageModal(false)}
             />
         </View >
-
-
     );
 }

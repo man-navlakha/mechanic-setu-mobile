@@ -1,16 +1,16 @@
 import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
 import {
-    History,
     LayoutDashboard,
     Settings,
     User,
-    Wrench,
+    Wallet,
+    Wrench
 } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useWebSocket } from '../../context/WebSocketContext';
 
@@ -22,10 +22,10 @@ export default function TabLayout() {
     const insets = useSafeAreaInsets();
 
     const isActiveJob =
-        job && (job.status === 'WORKING' || job.status === 'ARRIVED');
+        job && (job.status === 'ACCEPTED' || job.status === 'WORKING' || job.status === 'ARRIVED');
 
     const colors = {
-        bg: isDark ? 'rgba(0, 0, 0, 1)' : 'rgba(255, 255, 255, 1)',
+        bg: isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)',
         active: isDark ? '#60a5fa' : '#2563eb',
         inactive: isDark ? '#94a3b8' : '#64748b',
         danger: isDark ? '#ef4444' : '#dc2626',
@@ -36,53 +36,55 @@ export default function TabLayout() {
             screenOptions={{
                 headerShown: false,
                 tabBarShowLabel: true,
-                tabBarStyle: [
-                    styles.tabBar,
-                    {
-                        height: 60 + insets.bottom,
-                        paddingBottom: insets.bottom,
-                        paddingTop: 10,
-                    }
-                ],
+                tabBarStyle: {
+                    height: 60 + (Platform.OS === 'ios' ? insets.bottom : 15),
+                    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+                    borderTopWidth: 0,
+                    elevation: 20,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: -2 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 10,
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                },
                 tabBarLabelStyle: styles.label,
                 tabBarActiveTintColor: colors.active,
                 tabBarInactiveTintColor: colors.inactive,
                 tabBarBackground: () => (
                     <BlurView
-                        intensity={90}
+                        intensity={Platform.OS === 'ios' ? 90 : 100}
                         tint={isDark ? 'dark' : 'light'}
-                        style={[StyleSheet.absoluteFill, { backgroundColor: colors.bg, borderRadius: 0 }]}
+                        style={StyleSheet.absoluteFill}
                     />
                 ),
             }}
         >
-            {/* Dashboard */}
             <Tabs.Screen
                 name="index"
                 options={{
-                    title: 'Dashboard',
+                    title: t('tabs.dashboard'),
                     tabBarIcon: ({ color }) => (
                         <LayoutDashboard size={22} color={color} />
                     ),
                 }}
             />
 
-            {/* History */}
             <Tabs.Screen
                 name="history"
                 options={{
-                    title: 'History',
-                    tabBarIcon: ({ color }) => <History size={22} color={color} />,
+                    title: t('tabs.earnings'),
+                    tabBarIcon: ({ color }) => <Wallet size={22} color={color} />,
                 }}
             />
 
-            {/* Floating Active Job */}
             <Tabs.Screen
                 name="active-job"
-                redirect={!isActiveJob}
                 options={{
                     href: isActiveJob && job?.id ? `/job/${job.id}` : null,
-                    tabBarLabel: 'Active',
+                    tabBarLabel: t('tabs.active'),
                     tabBarIcon: () => (
                         <View
                             style={[
@@ -94,26 +96,24 @@ export default function TabLayout() {
                                 },
                             ]}
                         >
-                            <Wrench size={26} color="white" />
+                            <Wrench size={24} color="white" />
                         </View>
                     ),
                 }}
             />
 
-            {/* Profile */}
             <Tabs.Screen
                 name="profile"
                 options={{
-                    title: 'Profile',
+                    title: t('tabs.profile'),
                     tabBarIcon: ({ color }) => <User size={22} color={color} />,
                 }}
             />
 
-            {/* Settings */}
             <Tabs.Screen
                 name="settings"
                 options={{
-                    title: 'Settings',
+                    title: t('tabs.settings'),
                     tabBarIcon: ({ color }) => <Settings size={22} color={color} />,
                 }}
             />
@@ -122,31 +122,22 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-    tabBar: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 60,
-        borderTopWidth: 0,
-        elevation: 0,
-    },
     label: {
         fontSize: 10,
         fontWeight: '600',
-        marginBottom: 6,
+        marginBottom: 4,
     },
     fab: {
-        width: 50,
-        height: 50, // Slightly smaller to fit better in fixed bar
-        borderRadius: 25,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 10, // Adjusted for fixed bar
+        marginBottom: 6,
         shadowColor: '#000',
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 6,
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 8,
     },
 });

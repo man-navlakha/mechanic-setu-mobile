@@ -19,6 +19,13 @@
     "language": {
         "select": "ભાષા પસંદ કરો"
     },
+    "tabs": {
+        "dashboard": "ડેશબોર્ડ",
+        "earnings": "કમાણી",
+        "active": "ચલ રહા",
+        "profile": "પ્રોફાઇલ",
+        "settings": "સેટિંગ્સ"
+    },
     "profile": {
         "title": "મારી પ્રોફાઇલ",
         "personalInfo": "વ્યક્તિગત માહિતી",
@@ -56,7 +63,10 @@
         "wsConnecting": "જોડાઈ રહ્યું છે...",
         "wsDisconnected": "કનેક્શન તૂટ્યું",
         "wsOffline": "ઑફલાઇન",
-        "wsReconnect": "ફરીથી જોડાવા માટે ટેપ કરો"
+        "wsReconnect": "ફરીથી જોડાવા માટે ટેપ કરો",
+        "incomingRequests": "આવનારી વિનંતીઓ",
+        "recentJobs": "તાજેતરની પ્રવૃત્તિ",
+        "noRecentJobs": "કોઈ તાજેતરના કામ મળ્યા નથી."
     },
     "verify": {
         "verification": "ચકાસણી",
@@ -77,7 +87,12 @@
         "swipeToAccept": "સ્વીકાર કરવા માટે સ્વાઇપ કરો",
         "accepted": "સ્વીકાર કરવામાં આવ્યું!",
         "reject": "નકારી કાઢો",
-        "autoReject": "આપમેળે નકારી કાઢાશે"
+        "autoReject": "આપમેળે નકારી કાઢાશે",
+        "stopSound": "આવાજ્ બંધ કરો",
+        "deny": "નકારો",
+        "unknownIssue": "અજ્ઞાત સમસ્યા",
+        "vehicle": "વાહન",
+        "customer": "ગ્રાહક"
     },
     "unverified": {
         "verified": "ખાતું ચકાસાઈ ગયું છે",
@@ -90,5 +105,132 @@
         "notVerifiedDesc": "બધી સુવિધાઓ મેળવવા માટે કૃપા કરીને તમારું KYC પૂર્ણ કરો.",
         "completeKyc": "KYC પૂર્ણ કરો",
         "logout": "લોગ આઉટ"
+    },
+    "settings": {
+        "title": "સેટિંગ્સ",
+        "preferences": "પસંદગીઓ",
+        "language": "ભાષા",
+        "changeLanguage": "એપની ભાષા બદલો",
+        "aboutUs": "અમારી વિશે",
+        "aboutDescription": "મેકેનિક સેતુ વિશે",
+        "darkMode": "ડાર્ક મોડ",
+        "darkModeOn": "ડાર્ક મોડ ચાલુ છે",
+        "lightModeOn": "લાઇટ મોડ ચાલુ છે",
+        "account": "ખાતું",
+        "appName": "મેકેનિક સેતુ પાર્ટનર એપ",
+        "version": "આવૃત્તિ 1.0.0"
+    },
+    "about": {
+        "title": "અમારી વિશે",
+        "appName": "મેકેનિક સેતુ",
+        "description": "વાહન માલિકો અને કુશળ મેકેનિક વચ્ચેનું અંતર પૂરું કરવું. તમે જ્યાં ન હો ત્યાં ભરોસેમંદ અને ઑન-ડિમાન્ડ રોડસાઇડ સહાયતા પ્રદાન કરીએ છીએ.",
+        "meetTeam": "ટીમ ને મળો",
+        "frontendDeveloper": "ફ્રંટએન્ડ ડેવલપર",
+        "backendDeveloper": "બેકએન્ડ ડેવલપર",
+        "website": "વેબસાઇટ",
+        "contactSupport": "સહાયતા સંપર્ક કરો",
+        "copyright": "© 2025 મેકેનિક સેતુ. સર્વ અધિકાર સુરક્ષિત."
+    },
+    "history": {
+        "title": "કમાણી",
+        "todayEarnings": "આજની કમાણી",
+        "totalEarnings": "કુલ કમાણી",
+        "today": "આજે",
+        "history": "ઇતિહાસ",
+        "noRecords": "કોઈ રેકોર્ડ મળ્યું નથી",
+        "error": "ભૂલ",
+        "loadError": "ઇતિહાસ લોડ થઈ શક્યો નથી."
+    },
+    "form": {
+        "title": "પ્રોફાઇલ પૂર્ણ કરો",
+        "step": "પગલું",
+        "of": "માંથી",
+        "takePhoto": "ફોટો લો",
+        "tapToCapture": "ફોટો લેવા માટે ટેપ કરો",
+        "firstName": "પહેલું નામ",
+        "lastName": "છેલ્લું નામ",
+        "aadharNumber": "આધાર નંબર",
+        "shopName": "દુકાનનું નામ",
+        "shopLocation": "દુકાનનું સ્થાન",
+        "detectLocation": "મારું સ્થાન શોધો",
+        "updateLocation": "સ્થાન અપડેટ કરો",
+        "fullAddress": "સંપૂર્ણ સરનામું",
+        "email": "ઈમેલ",
+        "mobileNumber": "મોબાઇલ નંબર",
+        "mobileHint": "દેશ કોડ વિના 10 અંકનો નંબર દાખલ કરો",
+        "reviewDetails": "વિગતો સમીક્ષા કરો",
+        "name": "નામ",
+        "shop": "દુકાન",
+        "phone": "ફોન",
+        "address": "સરનામું",
+        "back": "પાછળ",
+        "next": "આગળ",
+        "submit": "સબમિટ કરો",
+        "success": "સફળ",
+        "profileSubmitted": "પ્રોફાઇલ સફળતાપૂર્વક સબમિટ થઈ!",
+        "missingFields": "ખૂટતી માહિતી",
+        "fillAllFields": "કૃપા કરીને બધી જરૂરી માહિતી ભરો.",
+        "permissionDenied": "પરવાનગી નકારી",
+        "cameraPermission": "ફોટો લેવા માટે અમને કેમેરાની પરવાનગી જોઈએ છે.",
+        "locationPermission": "તમારા દુકાનનું સરનામું શોધવા માટે સ્થાનની પરવાનગી આપો.",
+        "locationError": "સ્થાન મળ્યું નહીં.",
+        "error": "ભૂલ",
+        "failedProfile": "પ્રોફાઇલ બનાવવામાં નિષ્ફળ."
+    },
+    "job": {
+        "fetchingDetails": "કામની માહિતી લાવી રહ્યા છીએ...",
+        "customer": "ગ્રાહક",
+        "verifiedCustomer": "ચકાસાયેલ ગ્રાહક",
+        "serviceDetails": "સેવા વિગતો",
+        "vehicle": "વાહન",
+        "unknownVehicle": "અજ્ઞાત વાહન",
+        "reportedIssue": "જાણવેલ સમસ્યા",
+        "distance": "અંતર",
+        "eta": "અંદાજિત સમય",
+        "completeJob": "કામ પૂર્ણ કરો",
+        "awayFromLocation": "તમે સ્થાનથી {{distance}} કિમી દૂર છો",
+        "jobSuccessful": "કામ સફળ!",
+        "enterAmount": "શાનદાર કામ! કૃપા કરીને ગ્રાહક પાસેથી લીધેલી રકમ દાખલ કરો.",
+        "totalAmount": "કુલ રકમ (રોકડ/ઓનલાઇન)",
+        "cancel": "રદ કરો",
+        "confirm": "પુષ્ટિ કરો",
+        "cancelJob": "કામ રદ કરો",
+        "selectReason": "કૃપા કરીને રદ કરવાનું કારણ પસંદ કરો",
+        "otherReason": "અન્ય કારણ",
+        "typeReason": "તમારું કારણ અહીં લખો...",
+        "confirmCancel": "રદ કરવાની પુષ્ટિ કરો",
+        "cancelReasons": {
+            "customerRequest": "ગ્રાહકે રદ કરવાનું કહ્યું",
+            "noContact": "ગ્રાહક સાથે સંપર્ક થઈ શક્યો નહીં",
+            "tooComplex": "વાહનની સમસ્યા ખૂબ જટિલ",
+            "emergency": "મને કોઈ આપત્તિ હતી",
+            "noParts": "પાર્ટ્સ ઉપલબ્ધ નથી"
+        },
+        "noNumber": "નંબર નથી",
+        "phoneNotAvailable": "ગ્રાહકનો ફોન ઉપલબ્ધ નથી.",
+        "invalidPrice": "અમાન્ય રકમ",
+        "enterValidAmount": "કૃપા કરીને યોગ્ય રકમ દાખલ કરો.",
+        "required": "જરૂરી",
+        "selectOrTypeReason": "કૃપા કરીને કારણ પસંદ કરો અથવા લખો.",
+        "failedComplete": "કામ પૂર્ણ કરવામાં નિષ્ફળ.",
+        "failedCancel": "કામ રદ કરવામાં નિષ્ફળ."
+    },
+    "auth": {
+        "sessionExpired": "સત્ર સમાપ્ત થયો. કૃપા કરીને ફરી લોગિન કરો.",
+        "restoreFailed": "સત્ર પુનઃસ્થાપિત કરવામાં નિષ્ફળ."
+    },
+    "websocket": {
+        "newRequest": "નવો મેકેનિક અનુરોધ",
+        "connectionLost": "કનેક્શન તૂટ્યું",
+        "connectionLostDesc": "તમે સર્વરથી ડિસ્કનેક્ટ થઈ ગયા છો. ફરીથી જોડાવા માટે ટેપ કરો.",
+        "reconnect": "ફરીથી જોડો",
+        "acceptError": "કામ સ્વીકારી શક્યું નથી.",
+        "jobCompleted": "કામ પૂર્ણ થયું!",
+        "completeError": "કામ પૂર્ણ કરવામાં નિષ્ફળ.",
+        "jobCancelled": "કામ રદ કરવામાં આવ્યું છે.",
+        "cancelError": "કામ રદ કરવામાં નિષ્ફળ.",
+        "success": "સફળ",
+        "cancelled": "રદ",
+        "error": "ભૂલ"
     }
 }

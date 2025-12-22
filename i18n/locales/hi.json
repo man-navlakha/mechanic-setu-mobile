@@ -19,6 +19,13 @@
     "language": {
         "select": "भाषा चुनें"
     },
+    "tabs": {
+        "dashboard": "डैशबोर्ड",
+        "earnings": "कमाई",
+        "active": "चल रहा",
+        "profile": "प्रोफाइल",
+        "settings": "सेटिंग्स"
+    },
     "profile": {
         "title": "मेरी प्रोफाइल",
         "personalInfo": "व्यक्तिगत जानकारी",
@@ -56,7 +63,10 @@
         "wsConnecting": "जुड़ रहे हैं...",
         "wsDisconnected": "कनेक्शन टूटा",
         "wsOffline": "ऑफलाइन",
-        "wsReconnect": "फिर से जोड़ने के लिए टैप करें"
+        "wsReconnect": "फिर से जोड़ने के लिए टैप करें",
+        "incomingRequests": "आने वाले अनुरोध",
+        "recentJobs": "हाल की गतिविधि",
+        "noRecentJobs": "कोई हालिया काम नहीं मिला।"
     },
     "verify": {
         "verification": "सत्यापन",
@@ -77,7 +87,12 @@
         "swipeToAccept": "स्वीकार करने के लिए स्वाइप करें",
         "accepted": "स्वीकार कर लिया गया!",
         "reject": "अस्वीकार करें",
-        "autoReject": "अपने आप अस्वीकार हो जाएगा"
+        "autoReject": "अपने आप अस्वीकार हो जाएगा",
+        "stopSound": "आवाज़ बंद करें",
+        "deny": "अस्वीकार करें",
+        "unknownIssue": "अज्ञात समस्या",
+        "vehicle": "वाहन",
+        "customer": "ग्राहक"
     },
     "unverified": {
         "verified": "खाता सत्यापित हो गया है",
@@ -90,6 +105,41 @@
         "notVerifiedDesc": "पूरी सुविधाएं पाने के लिए कृपया अपना KYC पूरा करें।",
         "completeKyc": "KYC पूरा करें",
         "logout": "लॉग आउट"
+    },
+    "settings": {
+        "title": "सेटिंग्स",
+        "preferences": "पसंद",
+        "language": "भाषा",
+        "changeLanguage": "एप की भाषा बदलें",
+        "aboutUs": "हमारे बारे में",
+        "aboutDescription": "मैकेनिक सेतु के बारे में",
+        "darkMode": "डार्क मोड",
+        "darkModeOn": "डार्क मोड चालू है",
+        "lightModeOn": "लाइट मोड चालू है",
+        "account": "खाता",
+        "appName": "मैकेनिक सेतु पार्टनर एप",
+        "version": "संस्करण 1.0.0"
+    },
+    "about": {
+        "title": "हमारे बारे में",
+        "appName": "मैकेनिक सेतु",
+        "description": "वाहन मालिकों और कुशल मैकेनिकों के बीच की दूरी को पाटना। जहां भी आप हों, भरोसेमंद और जरूरत पर सड़क किनारे सहायता प्रदान करना।",
+        "meetTeam": "टीम से मिलें",
+        "frontendDeveloper": "फ्रंटएंड डेवलपर",
+        "backendDeveloper": "बैकएंड डेवलपर",
+        "website": "वेबसाइट",
+        "contactSupport": "सहायता से संपर्क करें",
+        "copyright": "© 2025 मैकेनिक सेतु। सभी अधिकार सुरक्षित।"
+    },
+    "history": {
+        "title": "कमाई",
+        "todayEarnings": "आज की कमाई",
+        "totalEarnings": "कुल कमाई",
+        "today": "आज",
+        "history": "इतिहास",
+        "noRecords": "कोई रिकॉर्ड नहीं मिला",
+        "error": "त्रुटि",
+        "loadError": "इतिहास लोड नहीं हो सका।"
     },
     "form": {
         "title": "प्रोफाइल पूरा करें",
@@ -168,5 +218,19 @@
     "auth": {
         "sessionExpired": "सत्र समाप्त हो गया। कृपया फिर से लॉगिन करें।",
         "restoreFailed": "सत्र पुनर्स्थापित करने में विफल।"
+    },
+    "websocket": {
+        "newRequest": "नया मैकेनिक अनुरोध",
+        "connectionLost": "कनेक्शन टूट गया",
+        "connectionLostDesc": "आप सर्वर से डिस्कनेक्ट हो गए हैं। फिर से जोड़ने के लिए टैप करें।",
+        "reconnect": "फिर से जोड़ें",
+        "acceptError": "जॉब स्वीकार नहीं कर सके।",
+        "jobCompleted": "काम पूरा हो गया!",
+        "completeError": "काम पूरा करने में विफल।",
+        "jobCancelled": "काम रद्द कर दिया गया है।",
+        "cancelError": "काम रद्द करने में विफल।",
+        "success": "सफल",
+        "cancelled": "रद्द",
+        "error": "त्रुटि"
     }
 }

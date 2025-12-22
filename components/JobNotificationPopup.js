@@ -111,13 +111,13 @@ export default function JobNotificationPopup({ job, onAccept, onReject, onMinimi
                 {/* Stop Sound Pill */}
                 <TouchableOpacity onPress={onStopSound} style={[styles.pillBtn, styles.mutePill]}>
                     <VolumeOff size={18} color="#475569" />
-                    <Text style={styles.muteText}>{t('jobPopup.stopSound') || 'Stop Sound'}</Text>
+                    <Text style={styles.muteText}>{t('jobPopup.stopSound')}</Text>
                 </TouchableOpacity>
 
                 {/* Deny Pill */}
                 <TouchableOpacity onPress={onReject} style={[styles.pillBtn, styles.denyPill]}>
                     <X size={18} color="white" />
-                    <Text style={styles.denyText}>{t('jobPopup.deny') || 'Deny'}</Text>
+                    <Text style={styles.denyText}>{t('jobPopup.deny')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -126,7 +126,7 @@ export default function JobNotificationPopup({ job, onAccept, onReject, onMinimi
 
                 {/* Floating Badge (New Request) */}
                 <View style={styles.floatingBadge}>
-                    <Text style={styles.badgeText}>{t('jobPopup.newRequest') || 'New Request!'}</Text>
+                    <Text style={styles.badgeText}>{t('jobPopup.newRequest')}</Text>
                 </View>
 
                 {/* Main Hero Content */}
@@ -134,14 +134,14 @@ export default function JobNotificationPopup({ job, onAccept, onReject, onMinimi
 
                     {/* Problem (Hero) */}
                     <Text style={[styles.heroTitle, { color: isDark ? '#f1f5f9' : '#0f172a' }]}>
-                        {job.problem || 'Unknown Issue'}
+                        {job.problem || t('jobPopup.unknownIssue')}
                     </Text>
 
                     {/* Vehicle (Sub) */}
                     <View style={styles.vehicleTag}>
                         {getVehicleIcon(job.vehical_type, isDark)}
                         <Text style={[styles.heroSub, { color: isDark ? '#94a3b8' : '#64748b' }]}>
-                            {job.vehical_type || 'Vehicle'}
+                            {job.vehical_type || t('jobPopup.vehicle')}
                         </Text>
                     </View>
                 </View>
@@ -157,9 +157,9 @@ export default function JobNotificationPopup({ job, onAccept, onReject, onMinimi
                             <MapPin size={20} color={isDark ? '#60a5fa' : '#2563eb'} />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.label}>{t('jobPopup.location') || 'Location'}</Text>
+                            <Text style={styles.label}>{t('jobPopup.location')}</Text>
                             <Text style={[styles.value, { color: isDark ? '#e2e8f0' : '#1e293b' }]} numberOfLines={2}>
-                                {job.location || 'Location shared'}
+                                {job.location || t('jobPopup.locationShared')}
                             </Text>
                         </View>
                     </View>
@@ -174,7 +174,7 @@ export default function JobNotificationPopup({ job, onAccept, onReject, onMinimi
                             )}
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.label}>{t('jobPopup.customer') || 'Customer'}</Text>
+                            <Text style={styles.label}>{t('jobPopup.customer')}</Text>
                             <Text style={[styles.value, { color: isDark ? '#e2e8f0' : '#1e293b' }]}>
                                 {job.first_name} {job.last_name}
                             </Text>
