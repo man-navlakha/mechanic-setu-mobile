@@ -40,6 +40,8 @@ export const WebSocketProvider = ({ children }) => {
     const locationIntervalRef = useRef(null);
     const appState = useRef(AppState.currentState);
     const soundRef = useRef(null);
+    const processedJobIds = useRef(new Set()); // Track accepted/pending IDs to avoid duplicate alerts
+    const currentSoundId = useRef(0); // For handling async sound loading race conditions
 
     // --- 1. INITIALIZATION (Only when user is logged in) ---
     useEffect(() => {
@@ -205,101 +207,134 @@ export const WebSocketProvider = ({ children }) => {
         else if (actionId === 'reject' && jobId) rejectJob(jobId);
     };
 
+    const [isRinging, setIsRinging] = useState(false);
+
+    const stopSignal = useRef(false);
+
     // --- 3. SOUND CONTROL ---
-    const startRing = async () => {
-        console.log("[Audio] startRing called");
+    const playNotificationSound = async () => {
+        console.log("[Audio] playNotificationSound called");
+
+        // Increment ID to invalidate previous pending loads
+        const mySoundId = currentSoundId.current + 1;
+        currentSoundId.current = mySoundId;
+        stopSignal.current = false;
+
         try {
+            // Unload previous sound if it exists
             if (soundRef.current) {
-                console.log("[Audio] Sound already playing, skipping start.");
-                return;
+                const status = await soundRef.current.getStatusAsync();
+                if (status.isLoaded) {
+                    await soundRef.current.stopAsync();
+                    await soundRef.current.unloadAsync();
+                }
+                soundRef.current = null;
             }
+
             console.log("[Audio] Loading sound file...");
-            // Ensure the sound file exists in assets/sounds/alert.mp3
             const { sound } = await Audio.Sound.createAsync(
                 require('../assets/sounds/alert.mp3'),
                 { isLooping: true }
             );
-            console.log("[Audio] Sound loaded. Playing...");
+
+            // Check if we were superseded by a newer call or stopped
+            if (currentSoundId.current !== mySoundId || stopSignal.current) {
+                console.log("[Audio] Sound load aborted (superseded or stopped).");
+                await sound.unloadAsync();
+                return;
+            }
+
             soundRef.current = sound;
+            console.log("[Audio] Playing new sound...");
             await sound.playAsync();
-            console.log("[Audio] Sound is now playing.");
+            setIsRinging(true);
         } catch (error) {
-            console.error("[Audio] Start Error FULL:", error);
-            // Alert.alert("Sound Error", error.message); 
+            console.error("[Audio] Play Error:", error);
+            setIsRinging(false);
         }
     };
 
     const stopRing = async () => {
         console.log("[Audio] stopRing called");
+        stopSignal.current = true; // Signal pending loads to stop
+
         try {
             if (soundRef.current) {
                 const status = await soundRef.current.getStatusAsync();
-                console.log("[Audio] Current sound status:", status);
                 if (status.isLoaded) {
                     await soundRef.current.stopAsync();
                     await soundRef.current.unloadAsync();
-                    console.log("[Audio] Sound stopped and unloaded.");
                 }
                 soundRef.current = null;
-            } else {
-                console.log("[Audio] No sound ref to stop.");
+                console.log("[Audio] Sound stopped.");
             }
         } catch (error) {
-            console.error("[Audio] Stop Error FULL:", error);
-            // Force cleanup if error
+            console.error("[Audio] Stop Error:", error);
             soundRef.current = null;
+        } finally {
+            setIsRinging(false);
         }
     };
 
     // --- 4. API & STATUS ---
     const fetchInitialStatus = async () => {
         try {
-            // 1. Check for Active/Pending Jobs FIRST
+            console.log("[WS] Checking for Active/Pending Jobs...");
+
+            // 1. Check for Active/Pending Jobs
             const syncRes = await api.get("/jobs/SyncActiveJob/");
-            let hasActiveJob = false;
 
+            // Check if we actually have a valid job object
             if (syncRes.data && syncRes.data.id && syncRes.data.status) {
-                console.log("[WS] Found active job, restoring session...");
-                hasActiveJob = true;
-                if (syncRes.data.status === 'PENDING') {
-                    setPendingJobs([syncRes.data]);
-                } else {
-                    setJob(syncRes.data);
-                    // Ensure backend status matches active job state
-                    updateStatus("WORKING");
+                const jobData = syncRes.data;
+                console.log(`[WS] Found job ID: ${jobData.id} with Status: ${jobData.status}`);
+
+                // 2. Handle PENDING Job
+                if (jobData.status === 'PENDING') {
+                    setPendingJobs([jobData]);
+                    console.log("[WS] Restored PENDING session.");
                 }
-                // If there's a job, we MUST be online
-                setIsOnlineState(true);
+                // 3. Handle ACTIVE Job (ACCEPTED, WORKING, etc.)
+                else {
+                    setJob(jobData);
+                    console.log(`[WS] Restored ACTIVE session (${jobData.status}).`);
+
+                    // CRITICAL FIX: Do NOT force updateStatus("WORKING") here.
+                    // Trust the backend status ("ACCEPTED") received in syncRes.
+                }
+
+                // 4. Set Online State
+                // If we have a job, we must be online.
                 intendedOnlineState.current = true;
+                setIsOnlineState(true);
+
+                // OPTIONAL: Only call this if your useEffect doesn't automatically 
+                // listen to 'isOnlineState' changes. If you have a useEffect listening 
+                // to isOnlineState, DELETE the line below.
                 connectWebSocket();
-            }
 
-            // 2. If no active job, check if User was previously ONLINE
-            if (!hasActiveJob) {
-                const res = await api.get("/jobs/GetBasicNeeds/");
-                const data = res.data.basic_needs || {};
+            } else {
+                // 5. No Active Job - Default to Offline
+                console.log("[WS] No active job found. Defaulting to OFFLINE.");
 
-                const serverIsOnline = data.status === "ONLINE";
+                intendedOnlineState.current = false;
+                setIsOnlineState(false);
 
-                if (serverIsOnline) {
-                    console.log("[WS] User status is ONLINE on server. Reconnecting...");
-                    setIsOnlineState(true);
-                    intendedOnlineState.current = true;
-                    connectWebSocket();
-                } else {
-                    console.log("[WS] User status is OFFLINE.");
-                    setIsOnlineState(false);
-                    intendedOnlineState.current = false;
+                // Sync this offline state to backend so it doesn't think we are available
+                // Wrap in try-catch so a minor update failure doesn't crash the app
+                try {
+                    await updateStatus("OFFLINE");
+                } catch (statusErr) {
+                    console.warn("[WS] Failed to sync OFFLINE status:", statusErr.message);
                 }
             }
 
         } catch (err) {
-            console.log("[WS] Init Error:", err.message);
-            // Safety: Default failure to offline
+            console.error("[WS] Init Error:", err.message);
+            // Safety: Default failure to offline to prevent ghost active states
             setIsOnlineState(false);
         }
     };
-
     const updateStatus = async (status) => {
         try {
             await api.put("/jobs/UpdateMechanicStatus/", { status });
@@ -308,12 +343,21 @@ export const WebSocketProvider = ({ children }) => {
         }
     };
 
+    const isConnectingRef = useRef(false);
+
     // --- 5. WEBSOCKET ---
     const connectWebSocket = async () => {
-        if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) return;
+        // Prevent multiple simultaneous connection attempts
+        if (
+            socketRef.current?.readyState === WebSocket.OPEN ||
+            socketRef.current?.readyState === WebSocket.CONNECTING ||
+            isConnectingRef.current
+        ) return;
 
         try {
+            isConnectingRef.current = true;
             setConnectionStatus('connecting');
+
             const res = await api.get("core/ws-token/");
             const wsToken = res?.data?.ws_token;
             if (!wsToken) throw new Error("No WS Token received");
@@ -327,6 +371,7 @@ export const WebSocketProvider = ({ children }) => {
 
             ws.onopen = () => {
                 console.log("[WS] Connected");
+                isConnectingRef.current = false; // Reset flag on success
                 setSocket(ws);
                 setConnectionStatus('connected');
                 cancelDisconnectedNotification(); // Cancel any existing disconnection notification
@@ -342,6 +387,7 @@ export const WebSocketProvider = ({ children }) => {
 
             ws.onclose = () => {
                 console.log("[WS] Disconnected");
+                isConnectingRef.current = false; // Reset flag on close
                 setSocket(null);
                 setConnectionStatus('disconnected');
                 stopLocationTracking();
@@ -354,11 +400,13 @@ export const WebSocketProvider = ({ children }) => {
 
             ws.onerror = (e) => {
                 console.log("[WS] Error", e.message);
+                isConnectingRef.current = false; // Reset flag on error
                 setConnectionStatus('disconnected');
             };
 
         } catch (err) {
             console.error("[WS] Connect error:", err);
+            isConnectingRef.current = false; // Reset flag on catch
             setConnectionStatus('disconnected');
             // Retry if initial connection failed (e.g. API error)
             if (intendedOnlineState.current) {
@@ -380,16 +428,20 @@ export const WebSocketProvider = ({ children }) => {
             case "new_job":
                 console.log("[WS] New Job:", data.service_request.id);
 
+                // Deduplicate using Ref (prevents sound from playing multiple times)
+                if (processedJobIds.current.has(data.service_request.id)) {
+                    console.log(`[WS] Duplicate Job Alert ignored (Ref check): ${data.service_request.id}`);
+                    return;
+                }
+                processedJobIds.current.add(data.service_request.id);
+
                 setPendingJobs(prev => {
-                    // Deduplicate
-                    if (prev.some(j => j.id === data.service_request.id)) {
-                        console.log(`[WS] Duplicate Job Alert ignored: ${data.service_request.id}`);
-                        return prev;
-                    }
+                    // Fail-safe deduplication for state
+                    if (prev.some(j => j.id === data.service_request.id)) return prev;
                     return [...prev, data.service_request];
                 });
 
-                startRing(); // Play Sound
+                playNotificationSound(); // Play Sound (Restarts if already playing)
 
                 // Only show native notification if in background AND notifee exists
                 if (AppState.currentState !== 'active' && notifee) {
@@ -464,9 +516,10 @@ export const WebSocketProvider = ({ children }) => {
 
     const rejectJob = (jobId) => {
         console.log(`[JOB] Rejecting Job ID: ${jobId}`);
+        stopRing(); // Stop ring immediately on reject
+
         setPendingJobs(prev => {
             const next = prev.filter(j => j.id !== jobId);
-            if (next.length === 0) stopRing();
             return next;
         });
         if (notifee) notifee.cancelNotification(`job_alert_${jobId}`);
@@ -552,8 +605,8 @@ export const WebSocketProvider = ({ children }) => {
     };
 
     const value = React.useMemo(() => ({
-        isOnline, setIsOnline, connectionStatus, job, pendingJobs, mechanicCoords, acceptJob, rejectJob, completeJob, cancelJob, reconnect, stopRing
-    }), [isOnline, connectionStatus, job, pendingJobs, mechanicCoords]);
+        isOnline, setIsOnline, connectionStatus, job, pendingJobs, mechanicCoords, acceptJob, rejectJob, completeJob, cancelJob, reconnect, stopRing, isRinging
+    }), [isOnline, connectionStatus, job, pendingJobs, mechanicCoords, isRinging]);
 
     return (
         <WebSocketContext.Provider value={value}>

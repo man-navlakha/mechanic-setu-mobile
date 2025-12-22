@@ -2,7 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { Bell, Globe, HelpCircle, History, MapPin, Navigation, User, Wrench, X } from 'lucide-react-native';
+import { Bell, Globe, HelpCircle, History, MapPin, Navigation, User, VolumeOff, Wrench, X } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -112,7 +112,7 @@ export default function Dashboard() {
     const mapRef = useRef(null);
     const { user, profile, loading: authLoading } = useAuth();
     const { t } = useTranslation();
-    const { isOnline, setIsOnline, connectionStatus, job, pendingJobs, acceptJob, rejectJob, mechanicCoords, reconnect, stopRing } = useWebSocket();
+    const { isOnline, setIsOnline, connectionStatus, job, pendingJobs, acceptJob, rejectJob, mechanicCoords, reconnect, stopRing, isRinging } = useWebSocket();
     const [showLanguageModal, setShowLanguageModal] = useState(false);
     const [viewingJobId, setViewingJobId] = useState(null);
     const prevPendingLength = useRef(0);
@@ -245,87 +245,131 @@ export default function Dashboard() {
                 ))}
             </MapView>
 
-            {/* --- TOP BAR (Floating Design) --- */}
-            <View
-                className="absolute top-0 w-full z-50 bg-white dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-800 rounded-b-2xl shadow-sm"
-                style={{ paddingTop: insets.top + 10, paddingBottom: 15 }}
-                pointerEvents="box-none"
-            >
-                <View className="mx-4 flex-row justify-between items-center">
+            {/* --- TOP AREA (Header + Pending Jobs) --- */}
+            <View className="absolute top-0 w-full z-50" pointerEvents="box-none">
+                {/* --- TOP BAR --- */}
+                <View
+                    className="w-full bg-white dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-800 rounded-b-2xl shadow-sm"
+                    style={{ paddingTop: insets.top + 10, paddingBottom: 15 }}
+                >
+                    <View className="mx-4 flex-row justify-between items-center">
 
-                    {/* Left: On/Off Switch Pill */}
-                    <Pressable
-                        onPress={() => setIsOnline(!isOnline)}
-                        className={`flex-row items-center justify-center
+                        {/* Left: On/Off Switch Pill */}
+                        <Pressable
+                            onPress={() => setIsOnline(!isOnline)}
+                            className={`flex-row items-center justify-center
     w-full max-w-[140px] py-3 rounded-full shadow-lg
     ${isOnline ? 'bg-green-600' : 'bg-slate-500'}
   `}
-                    >
-                        <MaterialIcons
-                            name={isOnline ? 'check-circle' : 'cancel'}
-                            size={20}
-                            color="white"
-                        />
-                        <Text className="text-white font-bold text-base ml-2">
-                            {isOnline
-                                ? t('dashboard.on') ?? 'ONLINE'
-                                : t('dashboard.off') ?? 'OFFLINE'}
-                        </Text>
-                    </Pressable>
-
-                    {/* Right: Icon Buttons */}
-                    <View className="flex-row items-center">
-                        {/* Help Button */}
-                        <TouchableOpacity
-                            onPress={() => {/* TODO: Open help */ }}
-                            className="bg-white dark:bg-slate-800 p-2.5 rounded-full shadow-lg border border-slate-100 dark:border-slate-700"
                         >
-                            <HelpCircle size={20} color={isDark ? "#94a3b8" : "#64748b"} />
-                        </TouchableOpacity>
+                            <MaterialIcons
+                                name={isOnline ? 'check-circle' : 'cancel'}
+                                size={20}
+                                color="white"
+                            />
+                            <Text className="text-white font-bold text-base ml-2">
+                                {isOnline
+                                    ? t('dashboard.on') ?? 'ONLINE'
+                                    : t('dashboard.off') ?? 'OFFLINE'}
+                            </Text>
+                        </Pressable>
 
-                        {/* Notification Button */}
-                        <TouchableOpacity
-                            onPress={() => {/* TODO: Open notifications */ }}
-                            className="bg-white dark:bg-slate-800 p-2.5 rounded-full shadow-lg ml-2 border border-slate-100 dark:border-slate-700"
-                        >
-                            <Bell size={20} color={isDark ? "#94a3b8" : "#64748b"} />
-                        </TouchableOpacity>
-
-                        {/* Language Button */}
-                        <TouchableOpacity
-                            onPress={() => setShowLanguageModal(true)}
-                            className="bg-white dark:bg-slate-800 p-2.5 rounded-full shadow-lg ml-2 border border-slate-100 dark:border-slate-700"
-                        >
-                            <Globe size={20} color={isDark ? "#94a3b8" : "#64748b"} />
-                        </TouchableOpacity>
-
-                        {/* Profile Button */}
-                        <TouchableOpacity
-                            onPress={() => router.push('/profile')}
-                            className="bg-white dark:bg-slate-800 p-2.5 rounded-full shadow-lg ml-2 border border-slate-100 dark:border-slate-700"
-                        >
-                            {profile.profile_pic ? <Image source={{ uri: profile.profile_pic }} className="w-5 h-5 rounded-full" /> : <User size={20} color={isDark ? "#94a3b8" : "#64748b"} />}
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                {/* Active Job Floating Banner */}
-                {
-                    job && job.status === "WORKING" && (
-                        <View className="mx-4 mt-3 bg-slate-900 dark:bg-slate-800 rounded-2xl p-4 shadow-xl flex-row justify-between items-center border border-slate-700">
-                            <View>
-                                <Text className="text-white font-bold text-base">{t('dashboard.activeJob')} #{job.id}</Text>
-                                <Text className="text-slate-300 text-xs mt-0.5">{job.vehical_type} • {job.problem}</Text>
-                            </View>
+                        {/* Right: Icon Buttons */}
+                        <View className="flex-row items-center">
+                            {/* Help Button */}
                             <TouchableOpacity
-                                onPress={() => router.push(`/job/${job.id}`)}
-                                className="bg-blue-600 px-4 py-2 rounded-xl"
+                                onPress={() => {/* TODO: Open help */ }}
+                                className="bg-white dark:bg-slate-800 p-2.5 rounded-full shadow-lg border border-slate-100 dark:border-slate-700"
                             >
-                                <Text className="text-white font-bold text-xs">{t('dashboard.view')}</Text>
+                                <HelpCircle size={20} color={isDark ? "#94a3b8" : "#64748b"} />
+                            </TouchableOpacity>
+
+                            {/* Notification Button */}
+                            <TouchableOpacity
+                                onPress={() => {/* TODO: Open notifications */ }}
+                                className="bg-white dark:bg-slate-800 p-2.5 rounded-full shadow-lg ml-2 border border-slate-100 dark:border-slate-700"
+                            >
+                                <Bell size={20} color={isDark ? "#94a3b8" : "#64748b"} />
+                            </TouchableOpacity>
+
+                            {/* Language Button */}
+                            <TouchableOpacity
+                                onPress={() => setShowLanguageModal(true)}
+                                className="bg-white dark:bg-slate-800 p-2.5 rounded-full shadow-lg ml-2 border border-slate-100 dark:border-slate-700"
+                            >
+                                <Globe size={20} color={isDark ? "#94a3b8" : "#64748b"} />
+                            </TouchableOpacity>
+
+                            {/* Profile Button */}
+                            <TouchableOpacity
+                                onPress={() => router.push('/profile')}
+                                className="bg-white dark:bg-slate-800 p-2.5 rounded-full shadow-lg ml-2 border border-slate-100 dark:border-slate-700"
+                            >
+                                {profile.profile_pic ? <Image source={{ uri: profile.profile_pic }} className="w-5 h-5 rounded-full" /> : <User size={20} color={isDark ? "#94a3b8" : "#64748b"} />}
                             </TouchableOpacity>
                         </View>
-                    )
-                }
+                    </View>
+
+                    {/* Active Job Floating Banner */}
+                    {
+                        job && job.status === "WORKING" && (
+                            <View className="mx-4 mt-3 bg-slate-900 dark:bg-slate-800 rounded-2xl p-4 shadow-xl flex-row justify-between items-center border border-slate-700">
+                                <View>
+                                    <Text className="text-white font-bold text-base">{t('dashboard.activeJob')} #{job.id}</Text>
+                                    <Text className="text-slate-300 text-xs mt-0.5">{job.vehical_type} • {job.problem}</Text>
+                                </View>
+                                <TouchableOpacity
+                                    onPress={() => router.push(`/job/${job.id}`)}
+                                    className="bg-blue-600 px-4 py-2 rounded-xl"
+                                >
+                                    <Text className="text-white font-bold text-xs">{t('dashboard.view')}</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )
+                    }
+                </View>
+
+                {/* --- INCOMING JOBS LIST (Stacked below header) --- */}
+                {pendingJobs && pendingJobs.length > 0 && !viewingJobId && (
+                    <View className="mx-4 mt-2 max-h-[400px]">
+                        <Text className="text-white bg-slate-800 self-start px-3 py-1 rounded-t-lg font-bold text-xs shadow-sm shadow-black">
+                            {t('dashboard.incomingRequests') || 'Incoming Requests'} ({pendingJobs.length})
+                        </Text>
+                        <View className="bg-slate-50 dark:bg-slate-800 rounded-b-xl rounded-tr-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                            {pendingJobs.map((pJob) => (
+                                <Pressable
+                                    key={pJob.id}
+                                    onPress={() => setViewingJobId(pJob.id)}
+                                    className="p-4 border-b border-slate-200 dark:border-slate-700 flex-row justify-between items-center active:bg-slate-100 dark:active:bg-slate-700 bg-white dark:bg-slate-800"
+                                >
+                                    <View className="flex-1 mr-4">
+                                        <View className="flex-row items-center mb-1">
+                                            <Text className="font-bold text-slate-800 dark:text-slate-100 text-sm flex-1" numberOfLines={1}>
+                                                {pJob.vehical_type || pJob.vehicle_type || 'Unknown'} • {pJob.problem}
+                                            </Text>
+                                        </View>
+                                        <Text className="text-xs text-slate-500 dark:text-slate-400" numberOfLines={1}>
+                                            {pJob.location || "Location Shared"}
+                                        </Text>
+                                    </View>
+
+                                    <View className="flex-row items-center gap-3">
+                                        <TouchableOpacity
+                                            onPress={() => rejectJob(pJob.id)}
+                                            className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-full"
+                                        >
+                                            <X size={16} color={isDark ? "#94a3b8" : "#64748b"} />
+                                        </TouchableOpacity>
+
+                                        <View className="bg-blue-100 dark:bg-blue-900/40 px-3 py-1.5 rounded-full">
+                                            <Text className="text-blue-700 dark:text-blue-300 text-[10px] font-bold">VIEW</Text>
+                                        </View>
+                                    </View>
+                                </Pressable>
+                            ))}
+                        </View>
+                    </View>
+                )}
             </View>
 
 
@@ -457,47 +501,17 @@ export default function Dashboard() {
                 <Navigation size={22} color={isDark ? "#60a5fa" : "#2563eb"} fill={isDark ? "#60a5fa" : "#2563eb"} />
             </TouchableOpacity>
 
-            {/* --- INCOMING JOBS LIST (Multiple or Minimized) --- */}
-            {pendingJobs && pendingJobs.length > 0 && !viewingJobId && (
-                <View className="absolute bottom-24 left-4 right-4 z-50 max-h-[300px]">
-                    <Text className="text-white bg-slate-800 self-start px-3 py-1 rounded-t-lg font-bold text-xs shadow-sm">
-                        Incoming Requests ({pendingJobs.length})
-                    </Text>
-                    <View className="bg-slate-50 dark:bg-slate-800 rounded-b-xl rounded-tr-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                        {pendingJobs.map((pJob) => (
-                            <Pressable
-                                key={pJob.id}
-                                onPress={() => setViewingJobId(pJob.id)}
-                                className="p-4 border-b border-slate-200 dark:border-slate-700 flex-row justify-between items-center active:bg-slate-100 dark:active:bg-slate-700 bg-white dark:bg-slate-800"
-                            >
-                                <View className="flex-1 mr-4">
-                                    <View className="flex-row items-center mb-1">
-                                        <Text className="font-bold text-slate-800 dark:text-slate-100 text-sm flex-1" numberOfLines={1}>
-                                            {pJob.vehicle_type} • {pJob.problem}
-                                        </Text>
-                                    </View>
-                                    <Text className="text-xs text-slate-500 dark:text-slate-400" numberOfLines={1}>
-                                        {pJob.location || "Location Shared"}
-                                    </Text>
-                                </View>
-
-                                <View className="flex-row items-center gap-3">
-                                    <TouchableOpacity
-                                        onPress={() => rejectJob(pJob.id)}
-                                        className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-full"
-                                    >
-                                        <X size={16} color={isDark ? "#94a3b8" : "#64748b"} />
-                                    </TouchableOpacity>
-
-                                    <View className="bg-blue-100 dark:bg-blue-900/40 px-3 py-1.5 rounded-full">
-                                        <Text className="text-blue-700 dark:text-blue-300 text-[10px] font-bold">VIEW</Text>
-                                    </View>
-                                </View>
-                            </Pressable>
-                        ))}
-                    </View>
-                </View>
+            {/* Global Stop Ring Button (Visible when ringing) */}
+            {isRinging && (
+                <TouchableOpacity
+                    onPress={stopRing}
+                    className="absolute bottom-40 left-4 bg-red-500 p-3.5 rounded-full shadow-lg border border-red-400 z-40"
+                >
+                    <VolumeOff size={22} color="white" />
+                </TouchableOpacity>
             )}
+
+
 
             {/* --- POPUP (Overlay - Single or Selected) --- */}
             {(() => {
@@ -519,6 +533,7 @@ export default function Dashboard() {
                                 stopRing();
                                 setViewingJobId(null);
                             }}
+                            onStopSound={stopRing}
                         />
                     );
                 }

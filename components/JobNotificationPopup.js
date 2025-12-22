@@ -1,8 +1,8 @@
-import { Bike, Car, Check, ChevronsRight, Truck, X } from 'lucide-react-native';
+import { Bike, Car, Check, ChevronsRight, MapPin, Truck, User, VolumeOff, X } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
     Extrapolate,
@@ -15,7 +15,7 @@ import Animated, {
 
 const { width } = Dimensions.get('window');
 const BUTTON_HEIGHT = 60;
-const BUTTON_WIDTH = width - 80;
+const BUTTON_WIDTH = width - 60;
 const BUTTON_PADDING = 5;
 const SWIPEABLE_DIMENSIONS = BUTTON_HEIGHT - 2 * BUTTON_PADDING;
 const H_SWIPE_RANGE = BUTTON_WIDTH - 2 * BUTTON_PADDING - SWIPEABLE_DIMENSIONS;
@@ -41,7 +41,6 @@ const SwipeButton = ({ onToggle, t, isDark }) => {
         }
     };
 
-    // Modern Gesture API (Fixes your error)
     const panGesture = Gesture.Pan()
         .onUpdate((e) => {
             if (isSuccess) return;
@@ -73,314 +72,315 @@ const SwipeButton = ({ onToggle, t, isDark }) => {
         opacity: interpolate(X.value, [0, H_SWIPE_RANGE / 2], [1, 0], Extrapolate.CLAMP),
     }));
 
-    const dynamicStyles = {
-        swipeContainer: {
-            backgroundColor: isDark ? '#334155' : '#f1f5f9',
-            borderColor: isDark ? '#475569' : '#e2e8f0',
-        },
-        swipeable: {
-            backgroundColor: isDark ? '#1e293b' : 'white',
-        },
-        swipeText: {
-            color: isDark ? '#94a3b8' : '#64748b',
-        },
+    // Green Swipe Theme
+    const theme = {
+        container: '#dcfce7', // Light green bg
+        overlay: '#22c55e',   // Green fill
+        knob: 'white',
+        text: '#15803d'       // Dark green text
     };
 
     return (
-        <View style={[styles.swipeContainer, dynamicStyles.swipeContainer]}>
-            <Animated.View style={[styles.colorOverlay, animatedOverlayStyle]} />
-            <Animated.Text style={[styles.swipeText, dynamicStyles.swipeText, animatedTextStyle]}>
+        <View style={[styles.swipeContainer, { backgroundColor: theme.container }]}>
+            <Animated.View style={[styles.colorOverlay, { backgroundColor: theme.overlay }, animatedOverlayStyle]} />
+            <Animated.Text style={[styles.swipeText, { color: theme.text }, animatedTextStyle]}>
                 {isSuccess ? t('jobPopup.accepted') : t('jobPopup.swipeToAccept')}
             </Animated.Text>
             <GestureDetector gesture={panGesture}>
-                <Animated.View style={[styles.swipeable, dynamicStyles.swipeable, animatedKnobStyle]}>
-                    {isSuccess ? <Check size={24} color="#22c55e" /> : <ChevronsRight size={24} color={isDark ? "#60a5fa" : "#2563eb"} />}
+                <Animated.View style={[styles.swipeable, { backgroundColor: theme.knob }, animatedKnobStyle]}>
+                    {isSuccess ? <Check size={28} color={theme.overlay} /> : <ChevronsRight size={28} color={theme.overlay} />}
                 </Animated.View>
             </GestureDetector>
         </View>
     );
 };
 
-// --- Countdown Timer ---
-const CountdownTimer = ({ seconds, onExpire, t, isDark }) => {
-    const [timeLeft, setTimeLeft] = useState(seconds);
-
-    useEffect(() => {
-        if (timeLeft === 0) {
-            onExpire && onExpire();
-            return;
-        }
-        const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
-        return () => clearInterval(timer);
-    }, [timeLeft]);
-
-    return (
-        <Text style={[styles.timerText, { color: isDark ? '#94a3b8' : '#64748b' }]}>
-            {t('jobPopup.autoReject')} <Text style={{ color: isDark ? '#fbbf24' : '#d97706', fontWeight: 'bold' }}>{timeLeft}s</Text>
-        </Text>
-    );
-};
-
 // --- Main Component ---
-export default function JobNotificationPopup({ job, onAccept, onReject, onMinimize }) {
+export default function JobNotificationPopup({ job, onAccept, onReject, onMinimize, onStopSound }) {
     const { t } = useTranslation();
     const { colorScheme } = useColorScheme();
     const isDark = colorScheme === 'dark';
 
     if (!job) return null;
-    console.log("JobNotificationPopup :", job);
-
-    // Dynamic colors for dark mode
-    const colors = {
-        card: isDark ? '#1e293b' : 'white',
-        body: isDark ? '#0f172a' : 'white',
-        infoLabel: isDark ? '#94a3b8' : '#64748b',
-        infoValue: isDark ? '#e2e8f0' : '#1e293b',
-        // Info row colors
-        blueRowBg: isDark ? 'rgba(37, 99, 235, 0.15)' : '#eff6ff',
-        blueRowBorder: isDark ? 'rgba(37, 99, 235, 0.3)' : '#dbeafe',
-        blueIconBg: isDark ? 'rgba(37, 99, 235, 0.25)' : '#dbeafe',
-        yellowRowBg: isDark ? 'rgba(217, 119, 6, 0.15)' : '#fffbeb',
-        yellowRowBorder: isDark ? 'rgba(217, 119, 6, 0.3)' : '#fef3c7',
-        yellowIconBg: isDark ? 'rgba(217, 119, 6, 0.25)' : '#fef3c7',
-        greenRowBg: isDark ? 'rgba(22, 163, 74, 0.15)' : '#f0fdf4',
-        greenRowBorder: isDark ? 'rgba(22, 163, 74, 0.3)' : '#dcfce7',
-        greenIconBg: isDark ? 'rgba(22, 163, 74, 0.25)' : '#dcfce7',
-        footer: isDark ? '#1e293b' : 'white',
-        timerBg: isDark ? '#334155' : '#f8fafc',
-        timerBorder: isDark ? '#475569' : '#e2e8f0',
-    };
 
     return (
-        <View style={styles.overlay} className="mb-6 pb-12">
-            {/* Reject Button (Floating Top Right) */}
-            <TouchableOpacity onPress={onReject} style={styles.rejectBtn}>
-                <X size={20} color="white" />
-                <Text style={styles.rejectText}>{t('jobPopup.reject')}</Text>
-            </TouchableOpacity>
+        <View style={styles.overlay}>
 
-            {/* Minimize Button (Floating Top Left) - NEW */}
-            <TouchableOpacity onPress={onMinimize} style={styles.minimizeBtn}>
-                <X size={24} color="white" />
-            </TouchableOpacity>
+            {/* Top Floating Actions */}
+            <View style={styles.topActionsStub}>
+                {/* Stop Sound Pill */}
+                <TouchableOpacity onPress={onStopSound} style={[styles.pillBtn, styles.mutePill]}>
+                    <VolumeOff size={18} color="#475569" />
+                    <Text style={styles.muteText}>{t('jobPopup.stopSound') || 'Stop Sound'}</Text>
+                </TouchableOpacity>
 
-            <View style={styles.sheet}>
-
-                {/* Countdown bubble */}
-                <View style={styles.countdownCircle}>
-                    <CountdownTimer
-                        seconds={12}
-                        onExpire={onReject}
-                        t={t}
-                        isDark={isDark}
-                    />
-                </View>
-
-                {/* Vehicle row */}
-                <View style={styles.vehicleRow}>
-                    <View style={styles.vehicleIcon}>
-                        {getVehicleIcon(job.vehical_type, isDark)}
-                    </View>
-
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.vehicleTitle}>
-                            {job.vehical_type || 'Bike Taxi'}
-                        </Text>
-                        <Text style={styles.vehicleSub}>
-                            Online Payment ₹{job.amount || 120}
-                        </Text>
-                    </View>
-                </View>
-
-                <View style={styles.divider} />
-
-                {/* Pickup / Drop */}
-                <View style={styles.routeBlock}>
-                    <View style={styles.routeRow}>
-                        <View style={styles.pickupDot} />
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.routeLabel}>Pickup · 2 km away</Text>
-                            <Text style={styles.routeText} numberOfLines={2}>
-                                {job.pickup || 'Pickup location'}
-                            </Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.routeLine} />
-
-                    <View style={styles.routeRow}>
-                        <View style={styles.dropDot} />
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.routeLabel}>Drop · 8 km</Text>
-                            <Text style={styles.routeText} numberOfLines={2}>
-                                {job.location || 'Drop location'}
-                            </Text>
-                        </View>
-                    </View>
-                </View>
-
-                <View style={styles.divider} />
-
-                {/* Your SAME swipe button */}
-                <SwipeButton onToggle={onAccept} t={t} isDark={isDark} />
-
+                {/* Deny Pill */}
+                <TouchableOpacity onPress={onReject} style={[styles.pillBtn, styles.denyPill]}>
+                    <X size={18} color="white" />
+                    <Text style={styles.denyText}>{t('jobPopup.deny') || 'Deny'}</Text>
+                </TouchableOpacity>
             </View>
 
+
+            <View style={[styles.sheet, { backgroundColor: isDark ? '#1e293b' : 'white' }]}>
+
+                {/* Floating Badge (New Request) */}
+                <View style={styles.floatingBadge}>
+                    <Text style={styles.badgeText}>{t('jobPopup.newRequest') || 'New Request!'}</Text>
+                </View>
+
+                {/* Main Hero Content */}
+                <View style={{ paddingTop: 30, alignItems: 'center', marginBottom: 20 }}>
+
+                    {/* Problem (Hero) */}
+                    <Text style={[styles.heroTitle, { color: isDark ? '#f1f5f9' : '#0f172a' }]}>
+                        {job.problem || 'Unknown Issue'}
+                    </Text>
+
+                    {/* Vehicle (Sub) */}
+                    <View style={styles.vehicleTag}>
+                        {getVehicleIcon(job.vehical_type, isDark)}
+                        <Text style={[styles.heroSub, { color: isDark ? '#94a3b8' : '#64748b' }]}>
+                            {job.vehical_type || 'Vehicle'}
+                        </Text>
+                    </View>
+                </View>
+
+                <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#e5e7eb' }]} />
+
+                {/* Info Rows */}
+                <View style={styles.infoSection}>
+
+                    {/* Location */}
+                    <View style={styles.row}>
+                        <View style={[styles.iconCircle, { backgroundColor: isDark ? '#334155' : '#eff6ff' }]}>
+                            <MapPin size={20} color={isDark ? '#60a5fa' : '#2563eb'} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.label}>{t('jobPopup.location') || 'Location'}</Text>
+                            <Text style={[styles.value, { color: isDark ? '#e2e8f0' : '#1e293b' }]} numberOfLines={2}>
+                                {job.location || 'Location shared'}
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* User */}
+                    <View style={styles.row}>
+                        <View style={[styles.iconCircle, { backgroundColor: isDark ? '#334155' : '#fce7f3' }]}>
+                            {job.user_profile_pic ? (
+                                <Image source={{ uri: job.user_profile_pic }} style={styles.userAvatar} />
+                            ) : (
+                                <User size={20} color={isDark ? '#f472b6' : '#db2777'} />
+                            )}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.label}>{t('jobPopup.customer') || 'Customer'}</Text>
+                            <Text style={[styles.value, { color: isDark ? '#e2e8f0' : '#1e293b' }]}>
+                                {job.first_name} {job.last_name}
+                            </Text>
+                            <Text style={styles.subValue}>
+                                {job.mobile_number}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Swipe Button */}
+                <View style={{ marginTop: 24 }}>
+                    <SwipeButton onToggle={onAccept} t={t} isDark={isDark} />
+                </View>
+
+            </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 100000, justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 40 },
-    sheet: {
-        width: '100%',
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        padding: 20,
-        paddingTop: 32,
-        zIndex: 100001,
-        bottom: 30,
+    overlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        zIndex: 100000,
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        paddingBottom: 20
     },
-
-    countdownCircle: {
+    topActionsStub: {
         position: 'absolute',
-        top: -30,
-        alignSelf: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 30,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        elevation: 6,
+        top: 60,
+        width: '100%',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        zIndex: 100002,
     },
-
-    vehicleRow: {
+    pillBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 30,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+        gap: 8,
+    },
+    mutePill: {
+        backgroundColor: '#f8fafc', // Slate 50
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    denyPill: {
+        backgroundColor: '#ef4444', // Red 500
+        borderWidth: 1,
+        borderColor: '#dc2626',
+    },
+    muteText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#475569',
+    },
+    denyText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: 'white',
     },
 
-    vehicleIcon: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#eff6ff',
-        justifyContent: 'center',
+    sheet: {
+        width: '94%',
+        borderRadius: 24,
+        padding: 24,
+        paddingTop: 32,
+        shadowColor: '#000',
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 5 },
+        elevation: 10,
+        marginBottom: 10,
+    },
+    floatingBadge: {
+        position: 'absolute',
+        top: -20,
+        alignSelf: 'center',
+        backgroundColor: '#2563eb', // Blue
+        paddingVertical: 8,
+        paddingHorizontal: 24,
+        borderRadius: 24,
+        borderWidth: 4,
+        borderColor: '#f1f5f9', // Match approx overlay or bg
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+    },
+    badgeText: {
+        color: 'white',
+        fontWeight: '800',
+        fontSize: 14,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+
+    heroTitle: {
+        fontSize: 26,
+        fontWeight: '800',
+        textAlign: 'center',
+        marginBottom: 8,
+        letterSpacing: -0.5,
+    },
+    vehicleTag: {
+        flexDirection: 'row',
         alignItems: 'center',
+        gap: 6,
+        backgroundColor: 'rgba(0,0,0,0.04)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
     },
-
-    vehicleTitle: {
+    heroSub: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#0f172a',
-    },
-
-    vehicleSub: {
-        fontSize: 13,
-        color: '#64748b',
+        textTransform: 'uppercase',
     },
 
     divider: {
         height: 1,
-        backgroundColor: '#e5e7eb',
-        marginVertical: 16,
+        marginVertical: 20,
     },
 
-    routeBlock: {
-        gap: 12,
+    infoSection: {
+        gap: 20,
     },
-
-    routeRow: {
+    row: {
         flexDirection: 'row',
-        gap: 12,
+        alignItems: 'center',
+        gap: 16,
     },
-
-    pickupDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#22c55e',
-        marginTop: 6,
+    iconCircle: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-
-    dropDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#ef4444',
-        marginTop: 6,
+    userAvatar: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
     },
-
-    routeLine: {
-        width: 2,
-        height: 24,
-        backgroundColor: '#e5e7eb',
-        marginLeft: 4,
-    },
-
-    routeLabel: {
-        fontSize: 12,
+    label: {
+        fontSize: 11,
         color: '#64748b',
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        marginBottom: 2,
+        letterSpacing: 0.5,
     },
-
-    routeText: {
-        fontSize: 14,
+    value: {
+        fontSize: 16,
         fontWeight: '600',
-        color: '#0f172a',
+        lineHeight: 22,
+    },
+    subValue: {
+        fontSize: 14,
+        color: '#64748b',
+        marginTop: 2,
     },
 
+    // Swipe Button
     swipeContainer: {
-        width: BUTTON_WIDTH,
+        width: '100%',
         height: BUTTON_HEIGHT,
         borderRadius: BUTTON_HEIGHT / 2,
         justifyContent: 'center',
         padding: BUTTON_PADDING,
         overflow: 'hidden',
-
-        // Modern card look
-        backgroundColor: '#f8fafc',
-        borderWidth: 1,
-        borderColor: '#e5e7eb',
-        elevation: 2,
     },
-
     colorOverlay: {
         position: 'absolute',
         left: 0,
         top: 0,
         bottom: 0,
-
-        // Accept green
-        backgroundColor: '#22c55e',
         borderRadius: BUTTON_HEIGHT / 2,
     },
-
     swipeText: {
         position: 'absolute',
         alignSelf: 'center',
-        fontSize: 15,
+        fontSize: 17,
         fontWeight: '700',
-        letterSpacing: 0.3,
-        color: '#64748b',
+        letterSpacing: 0.5,
     },
-
     swipeable: {
         width: SWIPEABLE_DIMENSIONS,
         height: SWIPEABLE_DIMENSIONS,
         borderRadius: SWIPEABLE_DIMENSIONS / 2,
-
-        backgroundColor: '#ffffff',
-
         justifyContent: 'center',
         alignItems: 'center',
-
-        // Floating knob
-        elevation: 4,
+        elevation: 3,
         shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 6,
-        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
     },
-
-
 });

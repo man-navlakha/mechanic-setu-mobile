@@ -39,9 +39,9 @@ export default function TabLayout() {
                 tabBarStyle: [
                     styles.tabBar,
                     {
-                        bottom: insets.bottom + 15,
-                        height: 80,
-                        paddingBottom: 10,
+                        height: 60 + insets.bottom,
+                        paddingBottom: insets.bottom,
+                        paddingTop: 10,
                     }
                 ],
                 tabBarLabelStyle: styles.label,
@@ -124,16 +124,12 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
     tabBar: {
         position: 'absolute',
-        left: 12,
-        right: 12,
         bottom: 0,
-        height: 98,
-        paddingTop: 12,
-        paddingBottom: 6,
-        borderRadius: 20,
+        left: 0,
+        right: 0,
+        height: 60,
         borderTopWidth: 0,
         elevation: 0,
-        overflow: 'hidden',
     },
     label: {
         fontSize: 10,
@@ -141,12 +137,12 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
     fab: {
-        width: 58,
-        height: 58,
-        borderRadius: 29,
+        width: 50,
+        height: 50, // Slightly smaller to fit better in fixed bar
+        borderRadius: 25,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 28, // lifts above bar
+        marginBottom: 10, // Adjusted for fixed bar
         shadowColor: '#000',
         shadowOpacity: 0.25,
         shadowRadius: 8,
