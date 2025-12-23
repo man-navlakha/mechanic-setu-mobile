@@ -109,39 +109,43 @@ export const WebSocketProvider = ({ children }) => {
 
     // --- 2. NOTIFICATION LOGIC (Safe) ---
     const displayIncomingJobNotification = async (newJob) => {
-        if (!notifee) return; // Skip if in Expo Go
+    if (!notifee) return;
 
-        const channelId = await notifee.createChannel({
-            id: 'job_requests',
-            name: 'Job Requests',
-            sound: 'default',
-            importance: 4, // AndroidImportance.HIGH
-            visibility: 1, // AndroidVisibility.PUBLIC
-        });
+    const channelId = await notifee.createChannel({
+        id: 'job_requests_urgent',
+        name: 'Urgent Job Requests',
+        importance: 4, // High importance
+        visibility: 1, // Public
+        sound: 'default',
+    });
 
-        await notifee.displayNotification({
-            id: `job_alert_${newJob.id}`,
-            title: '⚠️ NEW MECHANIC REQUEST',
-            body: `${newJob.vehicle_type || 'Vehicle'} - ${newJob.problem}`,
-            data: { jobId: newJob.id },
-            android: {
-                channelId,
-                category: 'call', // AndroidCategory.CALL
-                importance: 4,
-                visibility: 1,
-                fullScreenAction: {
-                    id: 'default',
-                    launchActivity: 'default',
-                },
-                ongoing: true,
-                loopSound: true,
-                actions: [
-                    { title: '✅ ACCEPT', pressAction: { id: 'accept', launchActivity: 'default' } },
-                    { title: '❌ REJECT', pressAction: { id: 'reject' } },
-                ],
+    await notifee.displayNotification({
+        id: `job_alert_${newJob.id}`,
+        title: '🚨 URGENT: NEW JOB FOUND',
+        body: `${newJob.vehical_type} - ${newJob.problem}`,
+        data: { jobId: String(newJob.id) },
+        android: {
+            channelId,
+            importance: 4,
+            // This is the key for showing over other apps/lockscreen
+            fullScreenAction: {
+                id: 'default',
             },
-        });
-    };
+            // Makes it stick until acted upon
+            ongoing: true,
+            // Categories help the OS prioritize the popup
+            category: 'call', 
+            pressAction: {
+                id: 'default',
+                launchActivity: 'default',
+            },
+            actions: [
+                { title: '✅ ACCEPT', pressAction: { id: 'accept', launchActivity: 'default' } },
+                { title: '❌ REJECT', pressAction: { id: 'reject' } },
+            ],
+        },
+    });
+};
 
     // --- DISCONNECTION NOTIFICATION ---
     const displayDisconnectedNotification = async () => {
@@ -438,11 +442,12 @@ export const WebSocketProvider = ({ children }) => {
                 });
 
                 playNotificationSound(); // Play Sound (Restarts if already playing)
-
-                // Only show native notification if in background AND notifee exists
                 if (AppState.currentState !== 'active' && notifee) {
-                    await displayIncomingJobNotification(data.service_request);
-                }
+        await displayIncomingJobNotification(data.service_request);
+    } else {
+        // If app is already open, show your internal JobNotificationPopup.js
+        playNotificationSound();
+    }
                 break;
 
             case "job_status_update":

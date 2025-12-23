@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
         zIndex: 100000,
         justifyContent: 'flex-end',
         alignItems: 'center',
-        paddingBottom: 20
+        paddingBottom: 80
     },
     topActionsStub: {
         position: 'absolute',

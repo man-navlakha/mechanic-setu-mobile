@@ -7,7 +7,7 @@ import { Bell, Globe, HelpCircle, History, MapPin, Navigation, User, VolumeOff, 
 import { useColorScheme } from 'nativewind';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Image, Platform, Pressable, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Platform, Pressable, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import Animated, {
     useAnimatedStyle,
@@ -21,6 +21,7 @@ import LanguageModal from '../components/LanguageModal';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../context/WebSocketContext';
 import api from '../utils/api';
+import { checkOverlayPermission, requestOverlayPermission } from '../utils/OverlayPermission';
 const TOGGLE_WIDTH = 140; // Increased width for text
 
 // Modern Light Map Style
@@ -121,7 +122,25 @@ export default function Dashboard() {
     const [showLanguageModal, setShowLanguageModal] = useState(false);
     const [viewingJobId, setViewingJobId] = useState(null);
     const prevPendingLength = useRef(0);
+useEffect(() => {
+    const verifyOverlay = async () => {
+        const isGranted = await checkOverlayPermission();
+        if (!isGranted && isOnline) {
+            Alert.alert(
+                "Permission Required",
+                "To show job alerts while you are using other apps, please enable 'Display over other apps' in settings.",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Open Settings", onPress: requestOverlayPermission }
+                ]
+            );
+        }
+    };
 
+    if (isOnline) {
+        verifyOverlay();
+    }
+}, [isOnline]);
     // Auto-open logic for new jobs
     useEffect(() => {
         const currentLength = pendingJobs.length;
@@ -503,7 +522,13 @@ export default function Dashboard() {
                 </TouchableOpacity>
             )}
 
-            {/* --- POPUP (Overlay - Single or Selected) --- */}
+           
+
+            <LanguageModal
+                visible={showLanguageModal}
+                onClose={() => setShowLanguageModal(false)}
+            />
+             {/* --- POPUP (Overlay - Single or Selected) --- */}
             {(() => {
                 const jobToShow = viewingJobId ? pendingJobs.find(j => j.id === viewingJobId) : null;
 
@@ -529,11 +554,7 @@ export default function Dashboard() {
                 }
                 return null;
             })()}
-
-            <LanguageModal
-                visible={showLanguageModal}
-                onClose={() => setShowLanguageModal(false)}
-            />
         </View >
+
     );
 }

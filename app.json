@@ -22,6 +22,7 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.mannavlakha.mechanicsetumobile",
       "permissions": [
+        "SYSTEM_ALERT_WINDOW",
         "USE_FULL_SCREEN_INTENT",
         "FOREGROUND_SERVICE",
         "VIBRATE",
