@@ -87,10 +87,17 @@ export default function TabLayout() {
             />
 
             <Tabs.Screen
-                name="settings"
+                name='settings'
                 options={{
                     title: t('tabs.settings'),
                     tabBarIcon: ({ color }) => <Settings size={22} color={color} />,
+                }}
+            />
+
+            <Tabs.Screen
+                name="active-job"
+                options={{
+                    href: null,
                 }}
             />
 

@@ -217,40 +217,42 @@ export const WebSocketProvider = ({ children }) => {
 
     // --- 3. SOUND CONTROL ---
     // --- OPTIMIZED SOUND CONTROL ---
-    const playNotificationSound = async () => {
-        if (!soundRef.current) {
-            console.warn("[Audio] Sound not preloaded yet.");
-            return;
-        }
-
-        try {
-            const status = await soundRef.current.getStatusAsync();
-            if (status.isLoaded) {
-                console.log("[Audio] Playing preloaded sound...");
-                // replayAsync() restarts the sound from the beginning if it was already playing
-                await soundRef.current.replayAsync().catch(err => console.log("Replay ignore:", err));
-                setIsRinging(true);
-            }
-        } catch (error) {
-            console.error("[Audio] Play Error:", error);
-            setIsRinging(false);
-        }
-    };
-
-    const stopRing = async () => {
+    const playNotificationSound = () => {
         if (!soundRef.current) return;
 
-        try {
-            const status = await soundRef.current.getStatusAsync();
-            if (status.isLoaded && status.isPlaying) {
-                console.log("[Audio] Stopping sound...");
-                await soundRef.current.stopAsync();
+        // Force execution onto the Main/JS thread loop
+        setTimeout(async () => {
+            try {
+                if (!soundRef.current) return;
+                const status = await soundRef.current.getStatusAsync();
+                if (status.isLoaded) {
+                    // replayAsync() restarts the sound safely on the correct thread
+                    await soundRef.current.replayAsync();
+                    setIsRinging(true);
+                }
+            } catch (error) {
+                console.error("[Audio] Play Error:", error);
+                setIsRinging(false);
             }
-        } catch (error) {
-            console.error("[Audio] Stop Error:", error);
-        } finally {
-            setIsRinging(false);
-        }
+        }, 0);
+    };
+
+    const stopRing = () => {
+        if (!soundRef.current) return;
+
+        setTimeout(async () => {
+            try {
+                if (!soundRef.current) return;
+                const status = await soundRef.current.getStatusAsync();
+                if (status.isLoaded && status.isPlaying) {
+                    await soundRef.current.stopAsync();
+                }
+            } catch (error) {
+                console.error("[Audio] Stop Error:", error);
+            } finally {
+                setIsRinging(false);
+            }
+        }, 0);
     };
     // --- Audio Init & Cleanup ---
     useEffect(() => {
@@ -294,16 +296,17 @@ export const WebSocketProvider = ({ children }) => {
         return () => {
             isMounted = false;
             const sound = soundRef.current;
-            // Detach ref immediately so other functions stop using it
             soundRef.current = null;
 
             if (sound) {
-                console.log("[Audio] Cleaning up sound...");
-                // Fire-and-forget unload. Do not await it in unmount.
-                sound.unloadAsync().catch(err => {
-                    // Ignore "Player accessed on wrong thread" or other unload errors here
-                    console.log("[Audio] Unload ignored:", err.message);
-                });
+                setTimeout(async () => {
+                    try {
+                        // Safe fire-and-forget unload on the main thread
+                        await sound.unloadAsync();
+                    } catch (err) {
+                        console.log("[Audio] Unload ignored:", err.message);
+                    }
+                }, 0);
             }
         };
     }, []);
@@ -471,7 +474,6 @@ export const WebSocketProvider = ({ children }) => {
                     return [...prev, data.service_request];
                 });
 
-                playNotificationSound(); // Play Sound (Restarts if already playing)
                 if (AppState.currentState !== 'active' && notifee) {
                     await displayIncomingJobNotification(data.service_request);
                 } else {
@@ -486,7 +488,7 @@ export const WebSocketProvider = ({ children }) => {
                     if (["COMPLETED", "CANCELLED", "EXPIRED"].includes(data.status)) {
                         setJob(null);
                         updateStatus("ONLINE");
-                        router.replace('/dashboard');
+                        router.replace('/(tabs)');
                     } else {
                         setJob(prev => ({ ...prev, status: data.status }));
                     }
@@ -584,7 +586,7 @@ export const WebSocketProvider = ({ children }) => {
             Alert.alert("Success", "Job Completed!");
             setJob(null);
             updateStatus("ONLINE");
-            router.replace('/dashboard');
+            router.replace('/(tabs)');
         } catch (e) {
             Alert.alert("Error", "Failed to complete job.");
         }
@@ -596,7 +598,7 @@ export const WebSocketProvider = ({ children }) => {
             Alert.alert("Cancelled", "Job has been cancelled.");
             setJob(null);
             updateStatus("ONLINE");
-            router.replace('/dashboard');
+            router.replace('/(tabs)');
         } catch (e) {
             Alert.alert("Error", "Failed to cancel job.");
         }

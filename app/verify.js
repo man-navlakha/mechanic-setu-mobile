@@ -23,8 +23,9 @@ export default function VerifyScreen() {
     const [focusedIndex, setFocusedIndex] = useState(-1);
 
     // Timer State
-    const [timer, setTimer] = useState(120);
+    const [timer, setTimer] = useState(10);
     const [isResendDisabled, setIsResendDisabled] = useState(true);
+    const [isInvalidUser, setIsInvalidUser] = useState(false);
 
     // Refs
     const inputRefs = useRef([]);
@@ -54,33 +55,33 @@ export default function VerifyScreen() {
     }, [isResendDisabled, timer]);
 
     const handleChange = (text, index) => {
-    // 1. Handle Pasting (if text length > 1)
-    if (text.length > 1) {
-        const pastedData = text.trim().slice(0, 6); // Take first 6 chars
-        if (/^\d+$/.test(pastedData)) { // Check if it's only numbers
-            const newOtp = [...otp];
-            pastedData.split('').forEach((char, i) => {
-                if (i < 6) newOtp[i] = char;
-            });
-            setOtp(newOtp);
-            
-            // Focus the last filled box or the next empty one
-            const nextFocusIndex = pastedData.length < 6 ? pastedData.length : 5;
-            inputRefs.current[nextFocusIndex]?.focus();
+        // 1. Handle Pasting (if text length > 1)
+        if (text.length > 1) {
+            const pastedData = text.trim().slice(0, 6); // Take first 6 chars
+            if (/^\d+$/.test(pastedData)) { // Check if it's only numbers
+                const newOtp = [...otp];
+                pastedData.split('').forEach((char, i) => {
+                    if (i < 6) newOtp[i] = char;
+                });
+                setOtp(newOtp);
+
+                // Focus the last filled box or the next empty one
+                const nextFocusIndex = pastedData.length < 6 ? pastedData.length : 5;
+                inputRefs.current[nextFocusIndex]?.focus();
+            }
+            return;
         }
-        return;
-    }
 
-    // 2. Handle Normal Single Character Input
-    if (isNaN(text)) return;
-    const newOtp = [...otp];
-    newOtp[index] = text;
-    setOtp(newOtp);
+        // 2. Handle Normal Single Character Input
+        if (isNaN(text)) return;
+        const newOtp = [...otp];
+        newOtp[index] = text;
+        setOtp(newOtp);
 
-    if (text.length === 1 && index < 5) {
-        inputRefs.current[index + 1]?.focus();
-    }
-};
+        if (text.length === 1 && index < 5) {
+            inputRefs.current[index + 1]?.focus();
+        }
+    };
 
     const handleKeyPress = (e, index) => {
         if (e.nativeEvent.key === 'Backspace') {
@@ -110,7 +111,8 @@ export default function VerifyScreen() {
                 otp: code
             };
 
-            const verifyRes = await api.post('/users/otp-verify/', payload);
+            const verifyRes = await api.post('users/otp-verify/', payload);
+
 
             // Extract the cookie from headers
             let newCookie = verifyRes.headers['set-cookie'];
@@ -134,7 +136,23 @@ export default function VerifyScreen() {
         } catch (err) {
             // This now correctly catches errors from both the API and the login function
             console.error('[Verify] Error:', err.message || err);
-            setError('Verification failed. Please try again.');
+
+            const status = err.response?.status;
+            const data = err.response?.data;
+
+            console.error('[Verify] URL:', err.config?.url);
+            console.error('[Verify] Status:', status);
+
+            if (status === 404 && data?.error) {
+                // If user is already active/not found, guide them to login
+                setIsInvalidUser(true);
+                Alert.alert("Notice", data.error, [
+                    { text: "Go to Login", onPress: () => router.replace('/login') }
+                ]);
+                setError(data.error);
+            } else {
+                setError('Verification failed. Please try again.');
+            }
         } finally {
             setLoading(false);
         }
@@ -145,10 +163,19 @@ export default function VerifyScreen() {
         setError('');
         setLoading(true);
 
+        console.log('[Verify] Resending OTP...');
+        console.log('[Verify] Context:', JSON.stringify(ctx, null, 2));
+
         try {
-            const res = await api.post('/users/resend-otp/', { key: ctx.key, id: ctx.id });
+            const url = 'users/resend-otp/';
+            console.log('[Verify] POSTing to:', api.defaults.baseURL + url);
+
+            const res = await api.post(url, { key: ctx.key, id: ctx.id });
+
+            console.log('[Verify] Success:', res.data);
             if (res.data.key) setCtx(prev => ({ ...prev, key: res.data.key }));
             if (res.data.id) setCtx(prev => ({ ...prev, id: res.data.id }));
+            console.log(res.data);
 
             Alert.alert("Sent!", "A new code has been sent to your email.");
             setIsResendDisabled(true);
@@ -157,7 +184,21 @@ export default function VerifyScreen() {
             inputRefs.current[0]?.focus();
 
         } catch (err) {
-            setError('Could not resend code. Try again later.');
+            console.error('[Verify] Resend FAILED');
+            const status = err.response?.status;
+            const data = err.response?.data;
+            console.error('[Verify] Status:', status);
+            console.error('[Verify] Data:', JSON.stringify(data, null, 2));
+
+            if (status === 404 && data?.error) {
+                setIsInvalidUser(true);
+                Alert.alert("Notice", data.error, [
+                    { text: "Go to Login", onPress: () => router.replace('/login') }
+                ]);
+                setError(data.error);
+            } else {
+                setError('Could not resend code. Try again later.');
+            }
         } finally {
             setLoading(false);
         }
@@ -270,7 +311,7 @@ export default function VerifyScreen() {
                                         onFocus={() => setFocusedIndex(index)}
                                         onBlur={() => setFocusedIndex(-1)}
                                         keyboardType="number-pad"
-                                       maxLength={index === focusedIndex ? 6 : 1}
+                                        maxLength={index === focusedIndex ? 6 : 1}
                                         selectTextOnFocus
                                         style={{
                                             width: 45,
@@ -304,16 +345,36 @@ export default function VerifyScreen() {
                         ) : null}
 
                         {/* Timer & Resend */}
-                        <View style={{ alignItems: 'center', marginBottom: 32 }}>
-                            {isResendDisabled ? (
-                                <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 9999 }}>
-                                    <Text style={{ color: '#64748b' }}>
-                                        {t('verify.Resend code in')} <Text style={{ fontWeight: 'bold', color: '#334155' }}>{formatTime(timer)}</Text>
-                                    </Text>
-                                </View>
-                            ) : (
+                        {!isInvalidUser && (
+                            <View style={{ alignItems: 'center', marginBottom: 32 }}>
+                                {isResendDisabled ? (
+                                    <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 9999 }}>
+                                        <Text style={{ color: '#64748b' }}>
+                                            {t('verify.Resend code in')} <Text style={{ fontWeight: 'bold', color: '#334155' }}>{formatTime(timer)}</Text>
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity
+                                        onPress={resendOtp}
+                                        style={{
+                                            backgroundColor: '#eff6ff',
+                                            paddingHorizontal: 24,
+                                            paddingVertical: 12,
+                                            borderRadius: 9999,
+                                            borderWidth: 1,
+                                            borderColor: '#bfdbfe'
+                                        }}
+                                    >
+                                        <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 16 }}>{t('verify.Resend code')}</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        )}
+
+                        {isInvalidUser && (
+                            <View style={{ alignItems: 'center', marginBottom: 32 }}>
                                 <TouchableOpacity
-                                    onPress={resendOtp}
+                                    onPress={() => router.replace('/login')}
                                     style={{
                                         backgroundColor: '#eff6ff',
                                         paddingHorizontal: 24,
@@ -323,10 +384,10 @@ export default function VerifyScreen() {
                                         borderColor: '#bfdbfe'
                                     }}
                                 >
-                                    <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 16 }}>{t('verify.Resend code')}</Text>
+                                    <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 16 }}>Go to Login</Text>
                                 </TouchableOpacity>
-                            )}
-                        </View>
+                            </View>
+                        )}
 
                         {/* Verify Button */}
                         <TouchableOpacity

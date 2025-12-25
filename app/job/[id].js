@@ -33,8 +33,8 @@ import api from '../../utils/api';
 const { width, height } = Dimensions.get('window');
 
 const SNAP_POINTS = {
-    COLLAPSED: height * 0.60, // Slightly higher to show more content
-    EXPANDED: height * 0.25,
+    COLLAPSED: height * 0.50, // More space visible initially
+    EXPANDED: height * 0.15,  // Drag higher up
 };
 
 // --- HELPER: Calculate Distance/ETA ---
@@ -254,7 +254,7 @@ export default function JobDetailsPage() {
         try {
             await cancelJob(currentJob.id, cancelReason);
             setIsJobCancelledState(true); // Trigger Animation
-            setTimeout(() => router.replace('/dashboard'), 3500);
+            setTimeout(() => router.replace('/(tabs)'), 3500);
         } catch (err) {
             actionsPaused.current = false; // Resume on error
             Alert.alert("Error", "Failed to cancel job.");
@@ -341,7 +341,7 @@ export default function JobDetailsPage() {
                 </View>
 
                 <TouchableOpacity
-                    onPress={() => router.replace('/dashboard')}
+                    onPress={() => router.replace('/(tabs)')}
                     className="w-full bg-indigo-600 py-4 rounded-2xl items-center shadow-lg shadow-indigo-200"
                 >
                     <Text className="text-white font-bold text-lg">Done</Text>
@@ -447,7 +447,11 @@ export default function JobDetailsPage() {
                         {/* Drag Handle */}
                         <View className="w-12 h-1.5 bg-gray-300 rounded-full self-center top-3 absolute z-10" />
 
-                        <ScrollView className="px-6 pt-10 pb-10 flex-1">
+                        <ScrollView
+                            className="px-6 pt-10 pb-10 flex-1"
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={{ paddingBottom: height * 0.5 }} // Ensure bottom content is scrollable
+                        >
 
                             {/* Customer Profile */}
                             <View className="flex-row items-center gap-4 mb-8">

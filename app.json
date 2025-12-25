@@ -2,12 +2,12 @@
   "expo": {
     "name": "Setu Partner",
     "slug": "setupartner",
-    "version": "1.6.2",
+    "version": "1.6.3",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "scheme": "setu-partner",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
