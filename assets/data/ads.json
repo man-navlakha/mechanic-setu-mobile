@@ -1,0 +1,82 @@
+[
+    {
+        "id": "ad1",
+        "businessName": "Pixel Classes",
+        "logo": "https://ik.imagekit.io/pxc/pixel%20class%20fav%20w-02.png",
+        "link": "https://pixelclass.netlify.app/",
+        "latitude": 23.023934,
+        "longitude": 72.570247,
+        "description": "Learn Coding from Experts!",
+        "offerTitle": "OFFER OFFER OFFER",
+        "offerSubtitle": "Get Full Stack Web Development Course at",
+        "offerPrice": "just ₹5000/- only",
+        "bgGradient": [
+            "#ff9a9e",
+            "#fad0c4"
+        ]
+    },
+    {
+        "id": "ad2",
+        "businessName": "Finder ",
+        "logo": "https://dvh1deh6tagwk.cloudfront.net/finder-au/wp-uploads/2024/12/Finder-logo-1200x675-1.png",
+        "link": "https://www.michelin.in/",
+        "latitude": 22.9504301,
+        "longitude": 72.5922022,
+        "description": "Best Tyres in Mumbai! 20% Off.",
+        "offerTitle": "MONSOON SALE",
+        "offerSubtitle": "Buy 3 Tyres & Get 1 Free",
+        "offerPrice": "Limited Time Only",
+        "bgGradient": [
+            "#a18cd1",
+            "#fbc2eb"
+        ]
+    },
+    {
+        "id": "ad3",
+        "businessName": "Mechanic Setu ",
+        "logo": "https://mechanicsetu.netlify.app/ms.png",
+        "link": "https://mechanicsetu.netlify.app/",
+        "latitude": 23.005765,
+        "longitude": 72.549157,
+        "description": "A road-side assistance app",
+        "offerTitle": "MECHANIC SETU",
+        "offerSubtitle": "Get instant roadside assistance",
+        "offerPrice": "GET IT NOW",
+        "bgGradient": [
+            "#d9d9d9",
+            "#212121"
+        ]
+    },
+    {
+        "id": "ad4",
+        "businessName": "Finder ",
+        "logo": "https://dvh1deh6tagwk.cloudfront.net/finder-au/wp-uploads/2024/12/Finder-logo-1200x675-1.png",
+        "link": "https://www.michelin.in/",
+        "latitude": 22.9504301,
+        "longitude": 72.5922022,
+        "description": "Best Tyres in Mumbai! 20% Off.",
+        "offerTitle": "MONSOON SALE",
+        "offerSubtitle": "Buy 3 Tyres & Get 1 Free",
+        "offerPrice": "Limited Time Only",
+        "bgGradient": [
+            "#a18cd1",
+            "#fbc2eb"
+        ]
+    },
+    {
+        "id": "ad5",
+        "businessName": "Battery World",
+        "logo": "https://cdn-icons-png.flaticon.com/512/2823/2823023.png",
+        "link": "https://www.exideindustries.com/",
+        "latitude": 28.6139,
+        "longitude": 77.2090,
+        "description": "Powering your drive. Delhi Branch.",
+        "offerTitle": "POWER UP",
+        "offerSubtitle": "Exchange your old battery and get",
+        "offerPrice": "FLAT ₹1000 OFF",
+        "bgGradient": [
+            "#84fab0",
+            "#8fd3f4"
+        ]
+    }
+]

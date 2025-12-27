@@ -1,20 +1,22 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { Bell, Globe, HelpCircle, History, MapPin, Navigation, User, VolumeOff, Wrench, X } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Image, Platform, Pressable, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, Modal, Platform, Pressable, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
-    withTiming,
+    withTiming
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import adsData from '../assets/data/ads.json';
 import DraggableBottomSheet from '../components/DraggableBottomSheet';
 import JobNotificationPopup from '../components/JobNotificationPopup';
 import LanguageModal from '../components/LanguageModal';
@@ -121,6 +123,7 @@ export default function Dashboard() {
     const { isOnline, setIsOnline, connectionStatus, job, pendingJobs, acceptJob, rejectJob, mechanicCoords, reconnect, stopRing, isRinging } = useWebSocket();
     const [showLanguageModal, setShowLanguageModal] = useState(false);
     const [viewingJobId, setViewingJobId] = useState(null);
+    const [selectedAd, setSelectedAd] = useState(null); // State for selected Ad Popup
     const prevPendingLength = useRef(0);
     const hasAskedOverlay = useRef(false);
 
@@ -309,6 +312,22 @@ export default function Dashboard() {
                     <Marker key={`past-${j.id}`} coordinate={{ latitude: parseFloat(j.latitude), longitude: parseFloat(j.longitude) }} opacity={0.6}>
                         <View className="bg-slate-200 p-1.5 rounded-full border border-slate-400">
                             <History size={14} color="#64748b" />
+                        </View>
+                    </Marker>
+                ))}
+                {/* --- ADS MARKERS (Click to Open Popup) --- */}
+                {adsData.map((ad) => (
+                    <Marker
+                        key={`ad-${ad.id}`}
+                        coordinate={{ latitude: ad.latitude, longitude: ad.longitude }}
+                        onPress={() => setSelectedAd(ad)}
+                    >
+                        <View className="bg-white p-0.5 rounded-full border-2 border-amber-400 shadow-lg overflow-hidden" style={{ width: 36, height: 36 }}>
+                            <Image
+                                source={{ uri: ad.logo }}
+                                className="w-full h-full rounded-full"
+                                resizeMode="cover"
+                            />
                         </View>
                     </Marker>
                 ))}
@@ -573,6 +592,91 @@ export default function Dashboard() {
             )}
 
 
+
+            {/* --- AD FULL SCREEN POPUP --- */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={!!selectedAd}
+                onRequestClose={() => setSelectedAd(null)}
+            >
+                <View className="flex-1 justify-center items-center bg-black/80 p-4">
+                    <View className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-2xl relative">
+                        {/* Close Button */}
+                        <TouchableOpacity
+                            onPress={() => setSelectedAd(null)}
+                            className="absolute top-4 right-4 z-50 bg-black/20 p-2 rounded-full"
+                        >
+                            <X size={20} color="white" />
+                        </TouchableOpacity>
+
+                        {/* Unique Header Gradient based on Ad Data or Default */}
+                        <LinearGradient
+                            colors={selectedAd?.bgGradient || ['#4f46e5', '#ec4899']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            className="p-8 items-center justify-center pt-12"
+                        >
+                            <View className="bg-white p-2 rounded-2xl shadow-xl mb-4">
+                                <Image
+                                    source={{ uri: selectedAd?.logo }}
+                                    className="w-20 h-20 rounded-xl"
+                                    resizeMode="contain"
+                                />
+                            </View>
+                            <Text className="text-white font-black text-2xl text-center shadow-md">
+                                {selectedAd?.businessName}
+                            </Text>
+                        </LinearGradient>
+
+                        <View className="p-6 items-center">
+                            {/* Offer Section */}
+                            {selectedAd?.offerTitle && (
+                                <View className="mb-6 w-full items-center">
+                                    <View className="bg-red-500 -rotate-2 px-4 py-1 self-center mb-2 shadow-sm">
+                                        <Text className="text-white font-black tracking-widest text-xs uppercase">
+                                            {selectedAd.offerTitle}
+                                        </Text>
+                                    </View>
+
+                                    <Text className="text-slate-500 dark:text-slate-400 text-center font-medium text-sm mb-1">
+                                        {selectedAd.offerSubtitle}
+                                    </Text>
+
+                                    <Text className="text-3xl font-black text-slate-800 dark:text-slate-100 text-center color-primary-600">
+                                        {selectedAd.offerPrice}
+                                    </Text>
+                                </View>
+                            )}
+
+                            {/* Description if no offer details, or secondary text */}
+                            <Text className="text-slate-500 text-center mb-6 leading-5 px-4">
+                                {selectedAd?.description}
+                            </Text>
+
+                            {/* Call To Action */}
+                            <TouchableOpacity
+                                onPress={() => {
+                                    if (selectedAd?.link) Linking.openURL(selectedAd.link);
+                                }}
+                                className="w-full bg-slate-900 dark:bg-slate-700 py-4 rounded-xl flex-row justify-center items-center active:scale-95 transition-transform"
+                                style={{
+                                    shadowColor: "#000",
+                                    shadowOffset: { width: 0, height: 4 },
+                                    shadowOpacity: 0.3,
+                                    shadowRadius: 4.65,
+                                    elevation: 8,
+                                }}
+                            >
+                                <Text className="text-white font-bold text-lg mr-2">
+                                    {t('dashboard.viewOffer') || "View Offer Now"}
+                                </Text>
+                                <MaterialIcons name="arrow-forward" size={24} color="white" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
             <LanguageModal
                 visible={showLanguageModal}
