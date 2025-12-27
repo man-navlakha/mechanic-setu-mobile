@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import CrashHandler from '../components/CrashHandler';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { LocationProvider } from '../context/LocationContext'; // <--- IMPORT THIS
 import { WebSocketProvider } from '../context/WebSocketContext';
@@ -78,15 +79,18 @@ function RootLayoutContent() {
     <LocationProvider>
       <WebSocketProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <NavigationGuard />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="login" />
-            <Stack.Screen name="verify" />
-            <Stack.Screen name="form" />
-            <Stack.Screen name="unverified" />
-            <Stack.Screen name="job/[id]" />
-          </Stack>
+          <CrashHandler>
+            <NavigationGuard />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="login" />
+              <Stack.Screen name="verify" />
+              <Stack.Screen name="form" />
+              <Stack.Screen name="unverified" />
+              <Stack.Screen name="job/[id]" />
+              <Stack.Screen name="crash-logs" options={{ presentation: 'modal', headerShown: false }} />
+            </Stack>
+          </CrashHandler>
         </GestureHandlerRootView>
       </WebSocketProvider>
     </LocationProvider>

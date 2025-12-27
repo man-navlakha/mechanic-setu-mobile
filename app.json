@@ -15,8 +15,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/logo.png",
-        "backgroundImage": "./assets/logo.png",
-        "monochromeImage": "./assets/logo.png"
+        "monochromeImage": "./assets/monochrome.svg"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,

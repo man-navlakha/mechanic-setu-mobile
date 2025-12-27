@@ -1,8 +1,13 @@
 // Use legacy API to avoid deprecation errors
 // @ts-ignore
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import React, { Component, ReactNode } from 'react';
 import { Alert, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+const documentDirectory = FileSystem.documentDirectory;
+const writeAsStringAsync = FileSystem.writeAsStringAsync;
 
 interface Props {
     children: ReactNode;
@@ -12,12 +17,13 @@ interface State {
     hasError: boolean;
     error: Error | null;
     errorInfo: React.ErrorInfo | null;
+    savedLogPath: string | null;
 }
 
 export default class CrashHandler extends Component<Props, State> {
     constructor(props: Props) {
         super(props);
-        this.state = { hasError: false, error: null, errorInfo: null };
+        this.state = { hasError: false, error: null, errorInfo: null, savedLogPath: null };
     }
 
     static getDerivedStateFromError(error: Error) {
@@ -26,16 +32,21 @@ export default class CrashHandler extends Component<Props, State> {
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
         this.setState({ errorInfo });
-        console.error("CrashHandler caught an error:", error, errorInfo);
+        console.error("CrashHandler caught an error:", error);
+        // Fire and forget
         this.saveErrorLog(error, errorInfo);
     }
 
     saveErrorLog = async (error: Error, errorInfo: React.ErrorInfo) => {
         try {
-            const timestamp = new Date().toISOString();
+            // Simple timestamp to avoid char issues
+            const timestamp = new Date().getTime();
+            const fileName = `crash_log_${timestamp}.txt`;
+
+            // Generate content
             const logContent = `
 CRASH REPORT
-Timestamp: ${timestamp}
+Timestamp: ${new Date().toISOString()}
 Error: ${error.toString()}
 
 Stack Trace:
@@ -43,18 +54,33 @@ ${error.stack}
 
 Component Stack:
 ${errorInfo.componentStack}
-      `;
+`;
 
-            // Define internal path
-            const fileName = `crash_log_${Date.now()}.txt`;
-            const fileUri = documentDirectory + fileName;
+            // METHOD 1: try FileSystem
+            const logDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
+            if (logDir) {
+                const fileUri = logDir + fileName;
+                await writeAsStringAsync(fileUri, logContent);
+                console.log("Crash log saved to FileSystem:", fileUri);
+                this.setState({ savedLogPath: fileName });
+                return;
+            }
 
-            // Write to internal storage first
-            await writeAsStringAsync(fileUri, logContent);
-            console.log("Crash log saved to internal storage:", fileUri);
+            // METHOD 2: Fallback to AsyncStorage
+            console.warn("FileSystem unavailable, saving to AsyncStorage");
+            const key = `CRASH_LOG_${timestamp}`;
+            await AsyncStorage.setItem(key, logContent);
+            this.setState({ savedLogPath: "Saved via AsyncStorage" });
 
         } catch (fsError) {
             console.error("Failed to save error log:", fsError);
+            // Last resort: try AsyncStorage even if FS failed
+            try {
+                const timestamp = new Date().getTime();
+                const key = `CRASH_LOG_${timestamp}`;
+                await AsyncStorage.setItem(key, `CRASH REPORT (Fallback)\nError: ${error.toString()}`);
+                this.setState({ savedLogPath: "Saved via Fallback" });
+            } catch (e) { }
         }
     };
 
@@ -63,9 +89,11 @@ ${errorInfo.componentStack}
         if (!error) return;
 
         try {
-            const timestamp = new Date().toISOString().replace(/:/g, '-');
+            const timestamp = new Date().getTime();
             const fileName = `Setu_Crash_Log_${timestamp}.txt`;
-            const fileUri = documentDirectory + fileName;
+
+            // Try to get a valid directory
+            const logDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
 
             const logContent = `
 CRASH REPORT - SETU PARTNER APP
@@ -77,33 +105,31 @@ ${error.stack}
 
 Component Stack:
 ${errorInfo?.componentStack}
-      `;
+`;
 
-            // Write fresh file for sharing
-            await writeAsStringAsync(fileUri, logContent);
+            if (logDir) {
+                const fileUri = logDir + fileName;
+                await writeAsStringAsync(fileUri, logContent);
 
-            // Check if sharing is available
-            const isAvailable = await Sharing.isAvailableAsync();
-            if (isAvailable) {
-                await Sharing.shareAsync(fileUri, {
-                    mimeType: 'text/plain',
-                    dialogTitle: 'Save Crash Report'
-                });
+                if (await Sharing.isAvailableAsync()) {
+                    await Sharing.shareAsync(fileUri, {
+                        mimeType: 'text/plain',
+                        dialogTitle: 'Save Crash Report'
+                    });
+                } else {
+                    Alert.alert("Sharing not available", "Cannot share logs on this device.");
+                }
             } else {
-                Alert.alert("Sharing not available", "Cannot share logs on this device.");
+                Alert.alert("Storage Error", "Cannot save log file for sharing. Please take a screenshot.");
             }
+
         } catch (e) {
             Alert.alert("Error", "Failed to share crash log.");
         }
     };
 
     handleReset = () => {
-        // Try to recover by resetting state, though a full reload is better
-        // In Expo Go, we can't easily trigger a native reload without NativeModules
-        // But we can try to reset this component's state and navigate home
-        this.setState({ hasError: false, error: null, errorInfo: null });
-        // Note: The router might be outside this context, so navigation might be tricky here
-        // But since this wraps the root, a state reset re-mounts the children.
+        this.setState({ hasError: false, error: null, errorInfo: null, savedLogPath: null });
     };
 
     render() {
@@ -120,6 +146,14 @@ ${errorInfo?.componentStack}
                             The application encountered an unexpected error.
                         </Text>
 
+                        {this.state.savedLogPath && (
+                            <View style={{ backgroundColor: '#dcfce7', padding: 10, borderRadius: 8, marginBottom: 20, width: '100%' }}>
+                                <Text style={{ color: '#166534', fontSize: 12, textAlign: 'center' }}>
+                                    ✅ Log Saved: {this.state.savedLogPath.split('/').pop()}
+                                </Text>
+                            </View>
+                        )}
+
                         <View style={styles.errorBox}>
                             <Text style={styles.errorText}>
                                 {this.state.error?.toString()}
@@ -127,7 +161,7 @@ ${errorInfo?.componentStack}
                         </View>
 
                         <TouchableOpacity style={styles.primaryButton} onPress={this.handleShare}>
-                            <Text style={styles.primaryButtonText}>📂 Save Crash Log</Text>
+                            <Text style={styles.primaryButtonText}>📂 Share Crash Log</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.secondaryButton} onPress={this.handleReset}>

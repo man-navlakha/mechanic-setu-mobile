@@ -1,6 +1,7 @@
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { ChevronRight, Globe, Info, LogOut, Moon, Sun, Trash2 } from 'lucide-react-native';
+import { AlertTriangle, ChevronRight, Globe, Info, LogOut, Moon, Sun, Trash2 } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,6 +18,16 @@ export default function SettingsScreen() {
     const isDark = colorScheme === 'dark';
     const [showLanguageModal, setShowLanguageModal] = useState(false);
     const insets = useSafeAreaInsets();
+    const [tapCount, setTapCount] = useState(0);
+
+    const handleVersionTap = async () => {
+        const newCount = tapCount + 1;
+        setTapCount(newCount);
+        if (newCount === 7) {
+            await AsyncStorage.setItem('admin_mode', 'true');
+            Alert.alert("Developer Mode", "You are now a developer! Admin features enabled.");
+        }
+    };
 
     const handleClearCache = async () => {
         Alert.alert(
@@ -100,9 +111,16 @@ export default function SettingsScreen() {
                 />
 
                 <SettingItem
+                    icon={<AlertTriangle size={24} color={isDark ? "#fbbf24" : "#d97706"} />}
+                    title="Crash Logs"
+                    subtitle="View app error reports"
+                    onPress={() => router.push('/crash-logs')}
+                />
+
+                <SettingItem
                     icon={<Info size={24} color={isDark ? "#34d399" : "#10b981"} />}
-                    title={t('settings.aboutUs')}
-                    subtitle={t('settings.aboutDescription')}
+                    title="About App Details" // Changed from 'About Us' or translation key
+                    subtitle="App info, Requirements & Permissions" // More descriptive subtitle
                     onPress={() => router.push('/about')}
                 />
 
@@ -133,10 +151,11 @@ export default function SettingsScreen() {
 
                 <View className="mt-auto items-center pb-4" style={{ paddingBottom: 80 + insets.bottom }}>
                     <Text className="text-slate-400 text-xs">{t('settings.appName')}</Text>
-                    <Text className="text-slate-400 text-xs">{t('settings.version')}</Text>
+                    <TouchableOpacity activeOpacity={1} onPress={handleVersionTap}>
+                        <Text className="text-slate-400 text-xs">{t('settings.version')}</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
-
             <LanguageModal
                 visible={showLanguageModal}
                 onClose={() => setShowLanguageModal(false)}

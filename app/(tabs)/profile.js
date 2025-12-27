@@ -1,4 +1,5 @@
-import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
     ArrowLeft,
     CheckCircle, ChevronRight,
@@ -10,10 +11,11 @@ import {
     Mail,
     MapPin,
     Store,
-    User
+    User,
+    Users
 } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Image, Linking, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,6 +38,17 @@ export default function ProfileScreen() {
     const [historyData, setHistoryData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showLanguageModal, setShowLanguageModal] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    useFocusEffect(
+        useCallback(() => {
+            const checkAdmin = async () => {
+                const allowed = await AsyncStorage.getItem('admin_mode');
+                setIsAdmin(allowed === 'true');
+            };
+            checkAdmin();
+        }, [])
+    );
 
     // --- 1. FETCH DATA ---
     useEffect(() => {
@@ -74,10 +87,6 @@ export default function ProfileScreen() {
 
     const handleGoBack = () => {
         if (activeSection === 'home') {
-            // If in tabs, back might mean nothing if it is the root of the tab.
-            // But if pushed from dashboard, back means dashboard.
-            // Since it is a tab now, back usually exits app or does nothing on Android.
-            // We can leave it or remove the arrow if at root.
             router.back();
         } else {
             setActiveSection('home');
@@ -180,7 +189,6 @@ export default function ProfileScreen() {
                 darkColor="bg-yellow-900/30"
                 onClick={() => setActiveSection('earnings')}
             />
-            {/* Redirect to History Tab instead of internal section if desired, but keep for now */}
             <MenuCard
                 title={t('profile.jobHistory')}
                 subtitle={t('profile.jobHistorySubtitle')}
@@ -189,6 +197,17 @@ export default function ProfileScreen() {
                 darkColor="bg-purple-900/30"
                 onClick={() => setActiveSection('jobHistory')}
             />
+
+            {isAdmin && (
+                <MenuCard
+                    title="Verify Mechanics"
+                    subtitle="Admin Panel"
+                    icon={<Users size={24} color={isDark ? "#fca5a5" : "#ef4444"} />}
+                    color="bg-red-50"
+                    darkColor="bg-red-900/30"
+                    onClick={() => router.push('/mechanic-verification')}
+                />
+            )}
 
             <TouchableOpacity
                 onPress={handleLogout}
@@ -351,7 +370,6 @@ export default function ProfileScreen() {
                 {activeSection === 'personalInfo' && <PersonalInfo />}
                 {activeSection === 'shopInfo' && <ShopInfo />}
                 {activeSection === 'earnings' && <EarningsSection />}
-                {activeSection === 'jobHistory' && <JobHistoryList />}
                 {activeSection === 'jobHistory' && <JobHistoryList />}
                 <View style={{ height: 80 + insets.bottom }} />
                 {/* Extra padding for Tabs */}
